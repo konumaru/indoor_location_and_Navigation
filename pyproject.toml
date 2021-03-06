@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "indoor_location_and_navigation"
+version = "0.1.0"
+description = ""
+authors = ["konumaru <konumaru1022@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+numpy = "^1.20.1"
+pandas = "^1.2.3"
+sklearn = "^0.0"
+lightgbm = "^3.1.1"
+xgboost = "^1.3.3"
+torch = "^1.8.0"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
