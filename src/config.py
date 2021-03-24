@@ -1,0 +1,2 @@
+SEED = 42
+NUM_FOLD = 5

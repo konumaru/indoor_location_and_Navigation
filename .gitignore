@@ -131,3 +131,5 @@ dmypy.json
 # Data
 data/raw/*
 !data/raw/.gitkeep
+*.csv
+*.npy
