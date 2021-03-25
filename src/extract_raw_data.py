@@ -50,6 +50,7 @@ def get_waypoint_in_parallel(
         for floor_filepath in site_filepath.glob("*")
         for path_filepath in floor_filepath.glob("*")
     )
+    # Data columns is (site, floor, path. timestamp, x, y).
     data = np.concatenate(data, axis=0)
     return data
 
@@ -92,11 +93,13 @@ def get_wifi_from_waypoints_in_parallel(waypoints: np.ndarray) -> np.ndarray:
 
 def main():
     src_dir = pathlib.Path("../data/raw/train/")
-    # Data columns is (site, floor, path. timestamp, x, y).
+
+    print("Processing waypoint of train ...")
     with timer("Get waypoint of train"):
         waypoints = get_waypoint_in_parallel(src_dir, "TYPE_WAYPOINT", is_join_ids=True)
     np.save("../data/working/train_waypoint.npy", waypoints)
 
+    print("Processing wifi of train ...")
     with timer("Get wifi of train"):
         wifi_features = get_wifi_from_waypoints_in_parallel(waypoints)
     np.save("../data/working/train_wifi_features.npy", wifi_features)
