@@ -6,10 +6,7 @@ from utils import timer
 
 
 def main():
-    # TODO:
-
     waypoint = np.load("../data/working/train_waypoint.npy")
-    wifi = np.load("../data/working/train_wifi_features.npy")
 
     path = waypoint[:, 2]
     cv = GroupKFold(n_splits=5)
@@ -24,8 +21,8 @@ def main():
             f"\tTrain nunique: {len(train_unique)} Valid nunique: {len(valid_unique)}"
         )
 
-        np.save(f"../data/fold/fold{n_fold:>02}_waypoint.npy", waypoint[valid_idx])
-        np.save(f"../data/fold/fold{n_fold:>02}_wifi.npy", wifi[valid_idx])
+        np.save(f"../data/fold/fold{n_fold:>02}_train_idx.npy", train_idx)
+        np.save(f"../data/fold/fold{n_fold:>02}_valid_idx.npy", valid_idx)
 
 
 if __name__ == "__main__":

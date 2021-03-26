@@ -1,2 +1,4 @@
 SEED = 42
 NUM_FOLD = 5
+
+BATCH_SIZE = 128
