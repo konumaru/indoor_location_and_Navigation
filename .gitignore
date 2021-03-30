@@ -133,3 +133,4 @@ data/raw/*
 !data/raw/.gitkeep
 *.csv
 *.npy
+*.pkl

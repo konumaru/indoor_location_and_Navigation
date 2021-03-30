@@ -83,15 +83,13 @@ def get_dataloader(waypoint, wifi, n_fold):
 
 def main():
     # TODO:
-    # Dataset の定義,
-    # CAUTION: wifi の bssid を label encoding しないといけない
     # Dataloader で取得できることを確認
     # Model の定義
     # Model の loss が返ってくることを確認
     # 1 fold で学習、評価
 
     waypoint = np.load("../data/working/train_waypoint.npy")
-    wifi = np.load("../data/working/train_wifi_features.npy")
+    wifi = np.load("../data/working/encoded_train_wifi_features.npy")
 
     for n_fold in range(config.NUM_FOLD):
         train_dataloader, valid_dataloader = get_dataloader(waypoint, wifi, n_fold)

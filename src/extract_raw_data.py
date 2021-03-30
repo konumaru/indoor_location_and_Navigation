@@ -11,7 +11,7 @@ from typing import Dict
 import config
 
 from utils import timer
-from utils import load_pickle, dump_pickle
+from utils import load_pickle, dump_pickle, use_cache
 
 
 def get_data_from_pathtxt(
@@ -152,7 +152,7 @@ def dump_wifi_bssid_map():
     wifi = np.concatenate([wifi_train, wifi_test], axis=0)
 
     bssid_uniques = np.unique(np.ravel(wifi[:, 0]))
-    bssid_map = {bssid: str(i) for i, bssid in enumerate(bssid_uniques)}
+    bssid_map = {bssid: str(i + 1) for i, bssid in enumerate(bssid_uniques)}
     dump_pickle("../data/working/bssid_map.pkl", bssid_map)
 
 
@@ -165,46 +165,65 @@ def encode_bssid(wifi_feature: np.ndarray) -> np.ndarray:
 
 def main():
     src_dir = pathlib.Path("../data/raw/train/")
-
     # TODO:
-    # wifi にある bssid の label encoding 用の map を作成する
+    # - 出力するファイルが存在する場合処理を飛ばす。 use_cacheデコレータを使ってもいいかもしれない
+    # - waypoint を決まった形式で加工・出力
+    # - train, test のwifi を加工・出力
+    #   - 欠損値の扱いを最終的な型に合わせて処理を行う
+    # - wifiのbssidの一覧を取得して、ラベルエンコーディング用のmapを作成
+    # - train, test の wifi の bssid に対しラベルエンコーディングを行い出力
 
-    # Convert from txt to np.ndarray and save as npy.
-
-    # waypints
     print("Processing waypoint ...")
-    # with timer("Get waypoint of train"):
-    #     waypoints = get_waypoint_in_parallel(src_dir, "TYPE_WAYPOINT", is_join_ids=True)
-    # np.save("../data/working/train_waypoint.npy", waypoints)
-    # with timer("Get waypoint of test"):
-    #     waypoints = get_test_waypoint()
-    # np.save("../data/working/test_waypoint.npy", waypoints)
+    if pathlib.Path("../data/working/train_waypoint.npy").exists():
+        with timer("Dump waypoint of train"):
+            waypoints = get_waypoint_in_parallel(
+                src_dir, "TYPE_WAYPOINT", is_join_ids=True
+            )
+            np.save("../data/working/train_waypoint.npy", waypoints)
 
-    # wifi
+    with timer("Dump waypoint of test"):
+        waypoints = get_test_waypoint()
+        np.save("../data/working/test_waypoint.npy", waypoints)
+
     print("Processing wifi ...")
-    # with timer("Get wifi of train"):
-    #     wifi_features = get_wifi_from_waypoints_in_parallel()
-    # np.save("../data/working/train_wifi_features.npy", wifi_features)
+    with timer("Get wifi of train"):
+        wifi_features = get_wifi_from_waypoints_in_parallel()
+        np.save("../data/working/train_wifi_features.npy", wifi_features)
     # with timer("Get wifi of test"):
     #     wifi_features = get_test_wifi_from_waypoints_in_parallel()
     # np.save("../data/working/test_wifi_features.npy", wifi_features)
 
-    # Label encode
+    # >>> Label encode
     # bssid of wifi
     print("Processing label encoding ...")
-    dump_wifi_bssid_map()
+    # dump_wifi_bssid_map()
 
     with timer("Encode bssid of wifi of train"):
         wifi_feature = np.load("../data/working/train_wifi_features.npy")
         wifi_feature = encode_bssid(wifi_feature)
+        wifi_feature[:, 0] = np.where(
+            wifi_feature[:, 0] == "nan", 0, wifi_feature[:, 0]
+        )
+        wifi_feature = np.nan_to_num(wifi_feature, nan="0").astype("int64")
     np.save("../data/working/encoded_train_wifi_features.npy", wifi_feature)
 
     with timer("Encode bssid of wifi of test"):
         wifi_feature = np.load("../data/working/test_wifi_features.npy")
         wifi_feature = encode_bssid(wifi_feature)
+        wifi_feature[:, 0] = np.where(
+            wifi_feature[:, 0] == "nan", 0, wifi_feature[:, 0]
+        )
+        wifi_feature = np.nan_to_num(wifi_feature, nan="0").astype("int64")
     np.save("../data/working/encoded_test_wifi_features.npy", wifi_feature)
 
 
 if __name__ == "__main__":
-    with timer("ParseData"):
-        main()
+
+    @use_cache("../data/temp.pkl")
+    def gen_arange_array():
+        return np.arange(100)
+
+    gen_arange_array()
+
+    # with timer("ParseData"):
+    #     main()
