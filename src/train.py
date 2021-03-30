@@ -29,30 +29,6 @@ class IndoorDataset(Dataset):
         )
 
 
-class InddorMudule(pl.LightningModule):
-    def __init__(self):
-        super().__init__()
-
-    def forward(self, x):
-        return x
-
-    def training_step(self, batch, batch_idx):
-        pass
-
-    def training_epoch_end(self, outputs):
-        pass
-
-    def validation_step(self, batch, batch_idx):
-        pass
-
-    def validation_epoch_end(self, outputs):
-        pass
-
-    def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
-        return optimizer
-
-
 def get_dataloader(waypoint, wifi, n_fold):
     train_idx = np.load(f"../data/fold/fold{n_fold:>02}_train_idx.npy")
     valid_idx = np.load(f"../data/fold/fold{n_fold:>02}_valid_idx.npy")
@@ -82,17 +58,14 @@ def get_dataloader(waypoint, wifi, n_fold):
 
 
 def main():
-    # TODO:
-    # Dataloader で取得できることを確認
-    # Model の定義
-    # Model の loss が返ってくることを確認
-    # 1 fold で学習、評価
-
     waypoint = np.load("../data/working/train_waypoint.npy")
     wifi = np.load("../data/working/encoded_train_wifi_features.npy")
 
     for n_fold in range(config.NUM_FOLD):
         train_dataloader, valid_dataloader = get_dataloader(waypoint, wifi, n_fold)
+
+        batch = iter(train_dataloader).__next__()
+        print(batch)
         break
 
 
