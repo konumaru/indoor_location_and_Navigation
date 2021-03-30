@@ -70,12 +70,13 @@ def get_test_waypoint():
 
 
 def waypoint_preprocessing():
-    src_dir = pathlib.Path("../data/raw/train/")
     # Train data
     filepath = "../data/working/train_waypoint.npy"
     if not pathlib.Path(filepath).exists():
         with timer("Dump waypoint of train"):
-            waypoints = get_waypoint_in_parallel(src_dir, "TYPE_WAYPOINT", True)
+            waypoints = get_waypoint_in_parallel(
+                "../data/raw/train/", "TYPE_WAYPOINT", True
+            )
             np.save(filepath, waypoints)
     # Test data
     filepath = "../data/working/test_waypoint.npy"
@@ -158,6 +159,22 @@ def get_test_wifi_from_waypoints_in_parallel() -> None:
     return data
 
 
+def wifi_preprocessing():
+    # Train data
+    filepath = "../data/working/train_wifi_features.npy"
+    if not pathlib.Path(filepath).exists():
+        with timer("Dump wifi of train"):
+            wifi_features = get_wifi_from_waypoints_in_parallel()
+            np.save(filepath, wifi_features)
+
+    # Test data
+    filepath = "../data/working/test_wifi_features.npy"
+    if not pathlib.Path(filepath).exists():
+        with timer("Dump wifi of test"):
+            wifi_features = get_test_wifi_from_waypoints_in_parallel()
+            np.save(filepath, wifi_features)
+
+
 # === Create map for label encode ===
 
 
@@ -192,13 +209,8 @@ def main():
     print("Processing waypoint ...")
     waypoint_preprocessing()
 
-    # print("Processing wifi ...")
-    # with timer("Get wifi of train"):
-    #     wifi_features = get_wifi_from_waypoints_in_parallel()
-    #     np.save("../data/working/train_wifi_features.npy", wifi_features)
-    # # with timer("Get wifi of test"):
-    # #     wifi_features = get_test_wifi_from_waypoints_in_parallel()
-    # # np.save("../data/working/test_wifi_features.npy", wifi_features)
+    print("Processing wifi ...")
+    wifi_preprocessing()
 
     # # >>> Label encode
     # # bssid of wifi
