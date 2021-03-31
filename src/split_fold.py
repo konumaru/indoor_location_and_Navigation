@@ -3,18 +3,20 @@ import numpy as np
 from sklearn.model_selection import GroupKFold
 
 from utils import timer
+from utils import load_pickle, dump_pickle
 
 
 def main():
-    waypoint = np.load("../data/working/train_waypoint.npy")
+    # ids, (site, floor, path)
+    ids = load_pickle("../data/preprocessing/train_ids.pkl")
 
-    path = waypoint[:, 2]
+    path = ids[:, 2]
     cv = GroupKFold(n_splits=5)
-    for n_fold, (train_idx, valid_idx) in enumerate(cv.split(waypoint, groups=path)):
+    for n_fold, (train_idx, valid_idx) in enumerate(cv.split(ids, groups=path)):
         print(f"Fold {n_fold:>02}")
 
-        train_unique = np.unique(waypoint[train_idx, 2])
-        valid_unique = np.unique(waypoint[valid_idx, 2])
+        train_unique = np.unique(ids[train_idx, 2])
+        valid_unique = np.unique(ids[valid_idx, 2])
 
         print(f"\tTrain size: {len(train_idx)} Valid size: {len(valid_idx)}")
         print(

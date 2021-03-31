@@ -8,6 +8,7 @@ from torch.utils.data import Dataset, DataLoader
 import pytorch_lightning as pl
 
 from utils import timer
+from utils import load_pickle
 
 import config
 
@@ -40,7 +41,7 @@ def get_dataloader(waypoint, wifi, n_fold):
         train_dataset,
         batch_size=config.BATCH_SIZE,
         shuffle=True,
-        num_workers=8,
+        num_workers=2,
         drop_last=True,
         pin_memory=True,
     )
@@ -49,7 +50,7 @@ def get_dataloader(waypoint, wifi, n_fold):
         valid_dataset,
         batch_size=config.BATCH_SIZE,
         shuffle=True,
-        num_workers=8,
+        num_workers=2,
         drop_last=True,
         pin_memory=True,
     )
@@ -58,14 +59,13 @@ def get_dataloader(waypoint, wifi, n_fold):
 
 
 def main():
-    waypoint = np.load("../data/working/train_waypoint.npy")
-    wifi = np.load("../data/working/encoded_train_wifi_features.npy")
+    waypoint = load_pickle("../data/preprocessing/train_target.pkl")
+    wifi = load_pickle("../data/preprocessing/train_wifi.pkl")
 
     for n_fold in range(config.NUM_FOLD):
         train_dataloader, valid_dataloader = get_dataloader(waypoint, wifi, n_fold)
 
-        batch = iter(train_dataloader).__next__()
-        print(batch)
+        print(iter(train_dataloader).next())
         break
 
 
