@@ -40,7 +40,7 @@ def create_site_map() -> Dict:
     site_uniques = np.unique(
         np.concatenate([waypoint_train[:, 0], waypoint_test[:, 0]], axis=0).ravel()
     )
-    site_map = {bssid: int(i + 1) for i, bssid in enumerate(site_uniques)}
+    site_map = {bssid: int(i) for i, bssid in enumerate(site_uniques)}
     return site_map
 
 

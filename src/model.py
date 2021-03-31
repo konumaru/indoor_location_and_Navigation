@@ -21,7 +21,7 @@ class WifiModel(nn.Module):
         self.output_dim = output_dim
         # For  bssi
         # Nunique of bssid is 185859.
-        self.embed_bssid = nn.Embedding(185859, bssid_embed_dim)
+        self.embed_bssid = nn.Embedding(185860, bssid_embed_dim)
         # For rssi
         self.bn1 = nn.BatchNorm1d(seq_len)
         # LSTM layers
@@ -33,6 +33,7 @@ class WifiModel(nn.Module):
     def forward(self, x):
         bssid, rssi = x
         x_bssid = self.embed_bssid(bssid)
+
         x_rssi = self.bn1(rssi)
         x_rssi = x_rssi.view(-1, self.seq_len, 1)
 
@@ -56,7 +57,7 @@ class BuildModel(nn.Module):
         self.site_embed_dim = site_embed_dim
         self.output_dim = output_dim
 
-        self.embed_site = nn.Embedding(204, site_embed_dim)
+        self.embed_site = nn.Embedding(205, site_embed_dim)
         self.layer1 = nn.Linear(site_embed_dim, output_dim)
 
     def forward(self, x):
@@ -90,40 +91,39 @@ class InddorModel(LightningModule):
         return optimizer
 
     def shared_step(self, batch):
-        pass
+        x, y = batch
+        z = self(x)
+        loss = F.mse_loss(z, y)
+        return z, loss
 
     def training_step(self, batch, batch_idx):
-        # x, y = batch
-        # z = self(x) or self.module(x)
-        # loss = loss_func(z, y)
-        # return {'loss': loss, 'preds': z}
-        pass
+        z, loss = self.shared_step(batch)
+        self.log("train_loss", loss)
+        return loss
 
     def training_epoch_end(self, training_step_outputs):
         pass
 
     def validation_step(self, batch, batch_idx):
-        pass
+        z, loss = self.shared_step(batch)
+        self.log("valid_loss", loss)
+        return loss
 
     def validation_epoch_end(self, validation_step_outputs):
         pass
 
     def test_step(self, batch, batch_idx):
-        # NOTE:
-        """
-        # call after training
-        trainer = Trainer()
-        trainer.fit(model)
+        z, loss = self.shared_step(batch)
 
-        # automatically auto-loads the best weights
-        trainer.test(test_dataloaders=test_dataloader)
+    def _comp_metric(self, y_hat, y):
+        def rmse(y_hat, y):
+            return torch.sqrt(F.mse_loss(y_hat, y))
 
-        # or call with pretrained model
-        model = MyLightningModule.load_from_checkpoint(PATH)
-        trainer = Trainer()
-        trainer.test(model, test_dataloaders=test_dataloader)
-        """
-        pass
+        p = 15
+        metric = torch.mean(
+            rmse(y_hat[:, 1:], y[:, 1:]) + p * torch.abs(y_hat[:, 0] - y[:, 0])
+        )
+        return metric
 
 
 def main():
@@ -135,23 +135,9 @@ def main():
 
     x, y = (build, bssid, rssi), waypoint
 
-    # model = WifiModel()
-    # z = model((bssid, rssi))
-    # print(z.shape)
-
-    # model = BuildModel()
-    # z = model(build)
-    # print(z.shape)
-
     model = InddorModel()
     z = model(x)
     print(z.shape)
-
-    # trainer = pl.Trainer()
-    # model = InddorModel()
-
-    # print(torch.rand(size=(1000, 3, 100)))
-    # trainer.fit(InddorModel)
 
 
 if __name__ == "__main__":
