@@ -114,6 +114,7 @@ class InddorModel(LightningModule):
 
     def test_step(self, batch, batch_idx):
         z, loss = self.shared_step(batch)
+        self.log("test_loss", loss)
 
     def _comp_metric(self, y_hat, y):
         def rmse(y_hat, y):
