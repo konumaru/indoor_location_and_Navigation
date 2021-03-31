@@ -14,8 +14,9 @@ import config
 
 
 class IndoorDataset(Dataset):
-    def __init__(self, waypoint, wifi):
+    def __init__(self, waypoint, build, wifi):
         self.waypoint = waypoint
+        self.build = build
         self.wifi = wifi
 
     def __len__(self):
@@ -23,19 +24,27 @@ class IndoorDataset(Dataset):
 
     def __getitem__(self, idx):
         _waypint = self.waypoint[idx]
-        _wifi = self.wifi[idx]
-        return (
-            _waypint,
-            _wifi,
-        )
+        _build = self.build[idx]
+        # wifi
+        bssid = self.wifi[idx, 0]
+        rssi = self.wifi[idx, 1].astype("float64")
+        return (_waypint, _build, bssid, rssi)
 
 
-def get_dataloader(waypoint, wifi, n_fold):
+def get_dataloader(n_fold):
+    waypoint = load_pickle("../data/preprocessing/train_target.pkl")
+    build = load_pickle("../data/preprocessing/train_build.pkl")
+    wifi = load_pickle("../data/preprocessing/train_wifi.pkl")
+
     train_idx = np.load(f"../data/fold/fold{n_fold:>02}_train_idx.npy")
     valid_idx = np.load(f"../data/fold/fold{n_fold:>02}_valid_idx.npy")
 
-    train_dataset = IndoorDataset(waypoint[train_idx], wifi[train_idx])
-    valid_dataset = IndoorDataset(waypoint[valid_idx], wifi[valid_idx])
+    train_dataset = IndoorDataset(
+        waypoint[train_idx], build[train_idx], wifi[train_idx]
+    )
+    valid_dataset = IndoorDataset(
+        waypoint[valid_idx], build[valid_idx], wifi[valid_idx]
+    )
 
     train_dataloader = DataLoader(
         train_dataset,
@@ -59,11 +68,9 @@ def get_dataloader(waypoint, wifi, n_fold):
 
 
 def main():
-    waypoint = load_pickle("../data/preprocessing/train_target.pkl")
-    wifi = load_pickle("../data/preprocessing/train_wifi.pkl")
 
     for n_fold in range(config.NUM_FOLD):
-        train_dataloader, valid_dataloader = get_dataloader(waypoint, wifi, n_fold)
+        train_dataloader, valid_dataloader = get_dataloader(n_fold)
 
         print(iter(train_dataloader).next())
         break

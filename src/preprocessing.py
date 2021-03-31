@@ -61,7 +61,7 @@ def create_train_build() -> np.ndarray:
     # Filtering data.
     flag = load_pickle("../data/preprocessing/train_data_flag.pkl")
     ids = ids[flag]
-    ids = ids[:, 0].astype("int64")
+    ids = ids[:, 0].astype("int64").reshape(-1, 1)
     return ids
 
 
