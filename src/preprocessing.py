@@ -21,13 +21,47 @@ def create_use_data_flag() -> np.ndarray:
 
 
 # === ids, (site, floor, path), string ===
-@save_cache("../data/preprocessing/train_ids.pkl", False)
+@save_cache("../data/preprocessing/train_ids.pkl", True)
 def create_train_ids() -> np.ndarray:
     waypoint = load_pickle("../data/working/train_waypint.pkl")
     # Select (site, floor, path) from (site, floor, path. timestamp, x, y)
     ids = waypoint[:, [0, 1, 2]]
     flag = load_pickle("../data/preprocessing/train_data_flag.pkl")
     ids = ids[flag]
+    return ids
+
+
+# === build, (site, floor, path), string ===
+@save_cache("../data/preprocessing/site_map.pkl", True)
+def create_site_map() -> Dict:
+    waypoint_train = load_pickle("../data/working/train_waypint.pkl")
+    waypoint_test = load_pickle("../data/working/test_waypint.pkl")
+    # wifi columns is (bssid, rssi, frequency).
+    site_uniques = np.unique(
+        np.concatenate([waypoint_train[:, 0], waypoint_test[:, 0]], axis=0).ravel()
+    )
+    site_map = {bssid: int(i + 1) for i, bssid in enumerate(site_uniques)}
+    return site_map
+
+
+def encode_site(ids: np.ndarray) -> np.ndarray:
+    site_map = load_pickle("../data/preprocessing/site_map.pkl")
+    encoded_site = [site_map[row[0]] for row in ids]
+    ids[:, 0] = np.array(encoded_site)
+    return ids
+
+
+@save_cache("../data/preprocessing/train_build.pkl", True)
+def create_train_build() -> np.ndarray:
+    waypoint = load_pickle("../data/working/train_waypint.pkl")
+    # Select (site, floor, path) from (site, floor, path. timestamp, x, y)
+    ids = waypoint[:, [0, 1, 2]]
+    # Label encode for site.
+    ids = encode_site(ids)
+    # Filtering data.
+    flag = load_pickle("../data/preprocessing/train_data_flag.pkl")
+    ids = ids[flag]
+    ids = ids[:, 0].astype("int64")
     return ids
 
 
@@ -109,10 +143,15 @@ def main():
     print("Create data flag ...")
     _ = create_use_data_flag()
     _ = create_train_ids()
-    print("Create target ...")
+
+    print("\nCreate target ...")
     _ = create_train_target()
 
-    print("Create wifi ...")
+    print("\nCreate build ...")
+    _ = create_site_map()
+    _ = create_train_build()
+
+    print("\nCreate wifi ...")
     _ = create_bssid_map()
     _ = create_train_wifi()
     _ = create_test_wifi()

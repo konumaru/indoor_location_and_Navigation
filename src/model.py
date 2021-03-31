@@ -4,18 +4,30 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+import pytorch_lightning as pl
 from pytorch_lightning import LightningModule
 
 
 class WifiLSTM(nn.Module):
     def __init__(self):
         super().__init__()
+        # bssi
+        # Nunique of bssid is 185859.
+        self.bssid_embed = nn.Embedding(185859, 64)
+        # rssi
+        self.bn1 = nn.BatchNorm1d(100)
+        self.layer1 = nn.Linear(100)
 
-    def forward(self):
-        pass
+    def forward(self, x):
+        bssid, rssi = x[0], x[1]
+        bssid = F.relu(self.bssid_embed(bssid))
+        rssi = F.relu(self.layer1(rssi))
+        x = torch.cat([bssid, rssi], dim=0)
+
+        return x
 
 
-class InddorMudule(LightningModule):
+class InddorModel(LightningModule):
     def __init__(self, lr: float = 1e-3):
         super().__init__()
 
@@ -64,7 +76,11 @@ class InddorMudule(LightningModule):
 
 
 def main():
-    print("pass")
+    trainer = pl.Trainer()
+    model = InddorModel()
+
+    # print(torch.rand(size=(1000, 3, 100)))
+    # trainer.fit(InddorModel)
 
 
 if __name__ == "__main__":
