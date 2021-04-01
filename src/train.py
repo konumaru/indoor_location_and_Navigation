@@ -1,4 +1,5 @@
 import numpy as np
+from sklearn.model_selection import GroupShuffleSplit
 
 import torch
 from torch import nn
@@ -7,6 +8,7 @@ from torch.utils.data import random_split, Dataset, DataLoader
 
 import pytorch_lightning as pl
 from pytorch_lightning import Trainer
+from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
@@ -28,32 +30,26 @@ class IndoorDataset(Dataset):
         return len(self.waypoint)
 
     def __getitem__(self, idx):
+        floor = self.waypoint[idx, 0].astype("int16")
         _waypint = self.waypoint[idx, 1:].astype("float32")
         _build = self.build[idx]
         # wifi
         bssid = self.wifi[idx, 0]
         rssi = self.wifi[idx, 1].astype("float32")
-        return (_build, bssid, rssi), _waypint
+        return (_build, bssid, rssi), (floor, _waypint)
 
 
 class IndoorDataModule(pl.LightningDataModule):
-    def __init__(self, batch_size, train_data, test_data):
+    def __init__(self, batch_size, train_data, valid_data, test_data):
         super().__init__()
         self.batch_size = batch_size
         self.train_data = train_data
+        self.valid_data = valid_data
         self.test_data = test_data
 
     def setup(self, stage=None):
-        train_dataset = IndoorDataset(*self.train_data)
-        train_dataset_len = len(train_dataset)
-        train_size = int(train_dataset_len * 0.8)
-        valid_size = int(train_dataset_len) - train_size
-
-        self.train_dataset, self.valid_dataset = random_split(
-            train_dataset,
-            [train_size, valid_size],
-            generator=torch.Generator().manual_seed(42),
-        )
+        self.train_dataset = IndoorDataset(*self.train_data)
+        self.valid_dataset = IndoorDataset(*self.valid_data)
         self.test_dataset = IndoorDataset(*self.test_data)
 
     def train_dataloader(self):
@@ -88,19 +84,23 @@ def get_datamodule(n_fold):
 
     train_idx = np.load(f"../data/fold/fold{n_fold:>02}_train_idx.npy")
     valid_idx = np.load(f"../data/fold/fold{n_fold:>02}_valid_idx.npy")
+    test_idx = np.load(f"../data/fold/fold{n_fold:>02}_test_idx.npy")
 
     train_data = (waypoint[train_idx], build[train_idx], wifi[train_idx])
-    test_data = (waypoint[valid_idx], build[valid_idx], wifi[valid_idx])
+    valid_data = (waypoint[valid_idx], build[valid_idx], wifi[valid_idx])
+    test_data = (waypoint[test_idx], build[test_idx], wifi[test_idx])
 
-    data_module = IndoorDataModule(config.BATCH_SIZE, train_data, test_data)
+    data_module = IndoorDataModule(config.BATCH_SIZE, train_data, valid_data, test_data)
     data_module.setup()
     return data_module
 
 
 def main():
+    pl.seed_everything(config.SEED)
     for n_fold in range(config.NUM_FOLD):
-        data_module = get_datamodule(n_fold)
+        datamodule = get_datamodule(n_fold)
         model = InddorModel()
+        checkpoint_callback = ModelCheckpoint(monitor="valid_loss")
         early_stop_callback = EarlyStopping(
             monitor="valid_loss",
             min_delta=0.00,
@@ -108,16 +108,17 @@ def main():
             verbose=False,
             mode="min",
         )
-        tb_logger = TensorBoardLogger(save_dir="tb_logs", name="wifiLSTM_buidModel")
+        tb_logger = TensorBoardLogger(save_dir="../tb_logs", name="wifiLSTM_buidModel")
 
         trainer = Trainer(
             accelerator=None,
-            max_epochs=5,
-            callbacks=[early_stop_callback],
+            max_epochs=1,
+            callbacks=[checkpoint_callback, early_stop_callback],
             logger=tb_logger,
         )
-        trainer.fit(model=model, datamodule=data_module)
-        trainer.test()
+        trainer.fit(model=model, datamodule=datamodule)
+        trainer.test(model=model, datamodule=datamodule)
+
         break
 
 

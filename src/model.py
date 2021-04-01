@@ -78,6 +78,8 @@ class InddorModel(LightningModule):
         self.layer2 = nn.Linear(64, 2)
 
     def forward(self, x):
+        # TODO:
+        # build, bssid, rssi, frequency = x
         x_build = self.model_build(x[0])
         x_wifi = self.model_wifi((x[1], x[2]))
 
@@ -87,13 +89,14 @@ class InddorModel(LightningModule):
         return x
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
-        return optimizer
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-2)
+        scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.95)
+        return [optimizer], [scheduler]
 
     def shared_step(self, batch):
         x, y = batch
         z = self(x)
-        loss = F.mse_loss(z, y)
+        loss = F.mse_loss(z, y[1])
         return z, loss
 
     def training_step(self, batch, batch_idx):
@@ -113,28 +116,34 @@ class InddorModel(LightningModule):
         pass
 
     def test_step(self, batch, batch_idx):
+        _, y = batch
         z, loss = self.shared_step(batch)
+        metric = self._comp_metric((y[0], z), y)
         self.log("test_loss", loss)
+        self.log("test_metric", metric)
 
     def _comp_metric(self, y_hat, y):
         def rmse(y_hat, y):
             return torch.sqrt(F.mse_loss(y_hat, y))
 
         p = 15
+        floor_hat, waypoint_hat = y_hat
+        floor, waypoint = y
         metric = torch.mean(
-            rmse(y_hat[:, 1:], y[:, 1:]) + p * torch.abs(y_hat[:, 0] - y[:, 0])
+            rmse(waypoint_hat, waypoint) + p * torch.abs(floor_hat - floor)
         )
         return metric
 
 
 def main():
     batch_size = 10
-    waypoint = torch.rand(size=(batch_size, 3))
+    floor = torch.randint(100, size=(batch_size, 1))
+    waypoint = torch.rand(size=(batch_size, 2))
     build = torch.randint(100, size=(batch_size, 1))
     bssid = torch.randint(100, size=(batch_size, 100))
     rssi = torch.rand(size=(batch_size, 100))
 
-    x, y = (build, bssid, rssi), waypoint
+    x, y = (build, bssid, rssi), (floor, waypoint)
 
     model = InddorModel()
     z = model(x)
