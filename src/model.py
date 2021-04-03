@@ -27,6 +27,7 @@ class WifiModel(nn.Module):
         # LSTM layers
         self.lstm1 = nn.LSTM(bssid_embed_dim + 1, 128)
         self.lstm2 = nn.LSTM(128, 64)
+        self.lstm3 = nn.LSTM(64, 64)
         self.layer1 = nn.Linear(seq_len * 64, 128)
         self.layer2 = nn.Linear(128, output_dim)
 
@@ -40,6 +41,7 @@ class WifiModel(nn.Module):
         x = torch.cat((x_bssid, x_rssi), dim=2)
         x, (hidden, cell) = self.lstm1(x)
         x, (hidden, cell) = self.lstm2(x)
+        x, (hidden, cell) = self.lstm3(x)
 
         x = x.view(-1, self.seq_len * 64)
         x = F.relu(self.layer1(x))
@@ -97,28 +99,23 @@ class InddorModel(LightningModule):
         x, y = batch
         z = self(x)
         loss = F.mse_loss(z, y[1])
-        return z, loss
+        metric = self._comp_metric((y[0], z), y)
+        return loss, metric
 
     def training_step(self, batch, batch_idx):
-        z, loss = self.shared_step(batch)
+        loss, metric = self.shared_step(batch)
         self.log("train_loss", loss)
+        self.log("train_metric", metric)
         return loss
-
-    def training_epoch_end(self, training_step_outputs):
-        pass
 
     def validation_step(self, batch, batch_idx):
-        z, loss = self.shared_step(batch)
+        loss, metric = self.shared_step(batch)
         self.log("valid_loss", loss)
+        self.log("valid_metric", metric)
         return loss
 
-    def validation_epoch_end(self, validation_step_outputs):
-        pass
-
     def test_step(self, batch, batch_idx):
-        _, y = batch
-        z, loss = self.shared_step(batch)
-        metric = self._comp_metric((y[0], z), y)
+        loss, metric = self.shared_step(batch)
         self.log("test_loss", loss)
         self.log("test_metric", metric)
 

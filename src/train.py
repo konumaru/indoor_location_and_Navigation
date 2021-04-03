@@ -104,22 +104,21 @@ def main():
         early_stop_callback = EarlyStopping(
             monitor="valid_loss",
             min_delta=0.00,
-            patience=3,
+            patience=20,
             verbose=False,
             mode="min",
         )
         tb_logger = TensorBoardLogger(save_dir="../tb_logs", name="wifiLSTM_buidModel")
 
         trainer = Trainer(
-            accelerator=None,
-            max_epochs=1,
+            accelerator="dp",
+            gpus=1,
+            max_epochs=200,
             callbacks=[checkpoint_callback, early_stop_callback],
             logger=tb_logger,
         )
         trainer.fit(model=model, datamodule=datamodule)
         trainer.test(model=model, datamodule=datamodule)
-
-        break
 
 
 if __name__ == "__main__":
