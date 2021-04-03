@@ -69,10 +69,10 @@ def create_test_waypoint():
     return waypoint
 
 
-# === wifi, (bssid, rssi, frequency). ===
+# === wifi, (bssid, rssi, frequency, ts_diff). ===
 
 
-@save_cache("../data/working/train_wifi.pkl")
+@save_cache("../data/working/train_wifi.pkl", False)
 def create_train_wifi():
     def get_wifi_from_waypoints(waypoint, max_len=100):
         (site, floor, path, timestamp, x, y) = waypoint
@@ -85,6 +85,7 @@ def create_train_wifi():
                 np.tile("nan", (1, 100)).astype("<U40"),  # bssid
                 np.tile("-999", (1, 100)).astype("<U40"),  # rssi
                 np.tile("0", (1, 100)).astype("<U40"),  # frequency
+                np.tile("-999", (1, 100)).astype("<U40"),  # ts_diff
             ],
             axis=0,
         )
@@ -94,13 +95,17 @@ def create_train_wifi():
             ts_diff_min = np.abs(np.min(ts_diff))
             # Extract latest values, except feature information.
             wifi = wifi[(ts_diff <= ts_diff_min)]
+            # Select feature diff of timestamp.
+            ts_diff = ts_diff[(ts_diff <= ts_diff_min)]
             # Extract columns of (bssid, rssi, frequency).
             wifi = wifi[:, extract_idx]
             # Sort values by rssi.
             sort_idx = np.argsort(wifi[:, 1])
             wifi = wifi[sort_idx]
+            ts_diff = ts_diff[sort_idx]
 
-            data[:, : wifi.T.shape[1]] = wifi.T[:, :max_len]
+            data[:3, : wifi.T.shape[1]] = wifi.T[:, :max_len]
+            data[3, : wifi.T.shape[1]] = ts_diff[:max_len]
         return data
 
     waypoints = load_pickle("../data/working/train_waypint.pkl")
@@ -112,7 +117,7 @@ def create_train_wifi():
     return data
 
 
-@save_cache("../data/working/test_wifi.pkl")
+@save_cache("../data/working/test_wifi.pkl", False)
 def create_test_wifi():
     def get_test_wifi_from_waypoints(
         waypoint: np.ndarray, max_len: int = 100
@@ -127,6 +132,7 @@ def create_test_wifi():
                 np.tile("nan", (1, 100)).astype("<U40"),  # bssid
                 np.tile("-999", (1, 100)).astype("<U40"),  # rssi
                 np.tile("0", (1, 100)).astype("<U40"),  # frequency
+                np.tile("-999", (1, 100)).astype("<U40"),  # ts_diff
             ],
             axis=0,
         )
@@ -134,15 +140,21 @@ def create_test_wifi():
         if len(wifi) > 0:
             ts_diff = wifi[:, 0].astype("int64") - int(timestamp)
             ts_diff_min = np.abs(np.min(ts_diff))
+            # Add feature diff of timestamp.
+            wifi = np.concatenate([wifi, ts_diff.reshape(-1, 1)], axis=1)
             # Extract latest values, except feature information.
             wifi = wifi[(ts_diff <= ts_diff_min)]
+            # Select feature diff of timestamp.
+            ts_diff = ts_diff[(ts_diff <= ts_diff_min)]
             # Extract columns of (bssid, rssi, frequency).
             wifi = wifi[:, extract_idx]
             # Sort values by rssi.
             sort_idx = np.argsort(wifi[:, 1])
             wifi = wifi[sort_idx]
+            ts_diff = ts_diff[sort_idx]
 
-            data[:, : wifi.T.shape[1]] = wifi.T[:, :max_len]
+            data[:3, : wifi.T.shape[1]] = wifi.T[:, :max_len]
+            data[3, : wifi.T.shape[1]] = ts_diff[:max_len]
         return data
 
     waypoints = load_pickle("../data/working/test_waypint.pkl")
@@ -163,20 +175,6 @@ def main():
     print("Create wifi ... ")
     _ = create_train_wifi()
     _ = create_test_wifi()
-
-    # # Preprocessing
-    # NOTE: ファイルを分けてもいいかもしれない
-    # # TODO:
-    # # create 後に 型変換やrowの選択、ラベルエンコーディングなどを行う
-    # print("Create target ...")
-    # _ = create_train_target()
-
-    # print("Filter data ...")
-    # target = None
-    # files = []
-
-    # target = load_pickle("../data/woking/train_target.pkl")
-    # print(target)
 
 
 if __name__ == "__main__":
