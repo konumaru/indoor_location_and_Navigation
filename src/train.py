@@ -4,7 +4,7 @@ from sklearn.model_selection import GroupShuffleSplit
 import torch
 from torch import nn
 import torch.nn.functional as F
-from torch.utils.data import random_split, Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader
 
 import pytorch_lightning as pl
 from pytorch_lightning import Trainer

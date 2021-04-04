@@ -65,6 +65,17 @@ def create_train_build() -> np.ndarray:
     return ids
 
 
+@save_cache("../data/preprocessing/test_build.pkl", True)
+def create_test_build() -> np.ndarray:
+    waypoint = load_pickle("../data/working/test_waypint.pkl")
+    # Select (site, floor, path) from (site, floor, path. timestamp, x, y)
+    ids = waypoint[:, [0, 1, 2]]
+    # Label encode for site.
+    ids = encode_site(ids)
+    ids = ids[:, 0].astype("int64").reshape(-1, 1)
+    return ids
+
+
 # === target, (floor, x, y, is_encoded), string ===
 
 
@@ -160,6 +171,7 @@ def main():
     print("\nCreate build ...")
     _ = create_site_map()
     _ = create_train_build()
+    _ = create_test_build()
 
     print("\nCreate wifi ...")
     _ = create_bssid_map()
