@@ -12,11 +12,11 @@ class MeanPositionLoss(nn.Module):
     def __init__(self):
         super(MeanPositionLoss, self).__init__()
 
-    def forward(self, output_way_x, output_way_y, output_floor, way_x, way_y, floor):
+    def forward(self, y_hat, y):
         p = 15
-        diff_x = output_way_x - way_x
-        diff_y = output_way_y - way_y
-        diff_f = output_floor - floor
+        diff_f = y_hat[0] - y[0]
+        diff_x = y_hat[1] - y[2]
+        diff_y = y_hat[1] - y[2]
 
         error = torch.sqrt(diff_x * diff_x + diff_y * diff_y) + p * torch.sqrt(
             diff_f * diff_f
@@ -32,12 +32,12 @@ class WifiModel(nn.Module):
         output_dim: int = 512,
     ):
         super().__init__()
-        input_size = 300 + bssid_embed_dim * seq_len
+        input_size = 400 + bssid_embed_dim * seq_len
         self.seq_len = seq_len
         self.bssid_embed_dim = bssid_embed_dim
         self.output_dim = output_dim
         # Nunique of bssid is 185859.
-        self.embed_bssid = nn.Embedding(185860, bssid_embed_dim)
+        self.embed_bssid = nn.Embedding(180203 + 1, bssid_embed_dim)
         self.layers = nn.Sequential(
             # Layer 0
             nn.BatchNorm1d(input_size),
@@ -57,15 +57,16 @@ class WifiModel(nn.Module):
         )
 
     def forward(self, x):
-        bssid, rssi, freq, ts_diff = x
+        bssid, rssi, freq, ts_diff, last_seen_ts_diff = x
 
         bssid = self.embed_bssid(bssid)
         bssid = bssid.view(-1, self.seq_len * self.bssid_embed_dim)
         rssi = rssi.view(-1, self.seq_len)
         freq = freq.view(-1, self.seq_len)
         ts_diff = ts_diff.view(-1, self.seq_len)
+        last_seen_ts_diff = last_seen_ts_diff.view(-1, self.seq_len)
 
-        x = torch.cat((bssid, rssi, freq, ts_diff), dim=1)
+        x = torch.cat((bssid, rssi, freq, ts_diff, last_seen_ts_diff), dim=1)
         x = self.layers(x)
         return x
 
@@ -110,8 +111,9 @@ class InddorModel(LightningModule):
         )
 
     def forward(self, x):
-        build_feature = self.model_build(x[0])
-        wifi_feature = self.model_wifi((x[1], x[2], x[3], x[4]))
+        input_build, input_wifi = x
+        build_feature = self.model_build(input_build)
+        wifi_feature = self.model_wifi(input_wifi)
 
         x = torch.cat((build_feature, wifi_feature), dim=1)
         x = self.layers(x)
@@ -165,25 +167,29 @@ def main():
     # targets.
     floor = torch.randint(100, size=(batch_size, 1))
     waypoint = torch.rand(size=(batch_size, 2))
+    y = torch.cat((floor, waypoint), dim=1)
     # build features.
     build = torch.randint(100, size=(batch_size, 1))
+    input_build = build
     # wifi feaatures.
     bssid = torch.randint(100, size=(batch_size, 100))
     rssi = torch.rand(size=(batch_size, 100))
     freq = torch.rand(size=(batch_size, 100))
     ts_dff = torch.rand(size=(batch_size, 100))
+    last_seen_ts_dff = torch.rand(size=(batch_size, 100))
+    input_wifi = (bssid, rssi, freq, ts_dff, last_seen_ts_dff)
 
     model = WifiModel()
-    z = model((bssid, rssi, freq, ts_dff))
+    z = model(input_wifi)
     print(z)
 
-    x, y = (build, bssid, rssi, freq, ts_dff), (floor, waypoint)
+    x, y = (input_build, input_wifi), y
 
     model = InddorModel()
     z = model(x)
 
     loss_fn = MeanPositionLoss()
-    loss = loss_fn(z[:, 0], z[:, 1], z[:, 2], floor, waypoint[:, 0], waypoint[:, 1])
+    loss = loss_fn(z, y)
     print(loss)
 
 

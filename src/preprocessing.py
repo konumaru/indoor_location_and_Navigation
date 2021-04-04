@@ -98,14 +98,14 @@ def create_train_target() -> np.ndarray:
     return target
 
 
-# === wifi===
+# === wifi,  (bssid, rssi, frequency, ts_diff), string ===
 
 
-@save_cache("../data/preprocessing/bssid_map.pkl", True)
+@save_cache("../data/preprocessing/bssid_map.pkl", False)
 def create_bssid_map() -> Dict:
     wifi_train = load_pickle("../data/working/train_wifi.pkl")
     wifi_test = load_pickle("../data/working/test_wifi.pkl")
-    # wifi columns is (bssid, rssi, frequency).
+    # wifi columns is (bssid, rssi, frequency, ts_diff).
     bssid_uniques = np.unique(
         np.concatenate([wifi_train[:, 0], wifi_test[:, 0]], axis=0).ravel()
     )
@@ -120,7 +120,7 @@ def encode_bssid(wifi_feature: np.ndarray) -> np.ndarray:
     return wifi_feature
 
 
-@save_cache("../data/preprocessing/train_wifi.pkl", True)
+@save_cache("../data/preprocessing/train_wifi.pkl", False)
 def create_train_wifi() -> np.ndarray:
     wifi = load_pickle("../data/working/train_wifi.pkl")
     wifi = encode_bssid(wifi)
@@ -130,7 +130,7 @@ def create_train_wifi() -> np.ndarray:
     return wifi
 
 
-@save_cache("../data/preprocessing/test_wifi.pkl", True)
+@save_cache("../data/preprocessing/test_wifi.pkl", False)
 def create_test_wifi() -> np.ndarray:
     wifi = load_pickle("../data/working/train_wifi.pkl")
     wifi = encode_bssid(wifi)

@@ -15,7 +15,7 @@ from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from utils import timer
 from utils import load_pickle
 
-from model import InddorModel
+from model import InddorModel, MeanPositionLoss
 
 import config
 
@@ -30,13 +30,17 @@ class IndoorDataset(Dataset):
         return len(self.waypoint)
 
     def __getitem__(self, idx):
-        floor = self.waypoint[idx, 0].astype("int16")
-        _waypint = self.waypoint[idx, 1:].astype("float32")
-        _build = self.build[idx]
+        waypint = self.waypoint[idx].astype("float32")
+        input_build = self.build[idx]
         # wifi
-        bssid = self.wifi[idx, 0]
-        rssi = self.wifi[idx, 1].astype("float32")
-        return (_build, bssid, rssi), (floor, _waypint)
+        input_wifi = (
+            self.wifi[idx, 0],  # bssid
+            self.wifi[idx, 1].astype("float32"),  # rssi
+            self.wifi[idx, 2].astype("float32"),  # frequencyt
+            self.wifi[idx, 3].astype("float32"),  # ts_diff
+            self.wifi[idx, 4].astype("float32"),  # last_seen_ts_diff
+        )
+        return (input_build, input_wifi), waypint
 
 
 class IndoorDataModule(pl.LightningDataModule):
@@ -77,28 +81,28 @@ class IndoorDataModule(pl.LightningDataModule):
         )
 
 
-def get_datamodule(n_fold):
+def main():
+    pl.seed_everything(config.SEED)
+
     waypoint = load_pickle("../data/preprocessing/train_target.pkl")
     build = load_pickle("../data/preprocessing/train_build.pkl")
     wifi = load_pickle("../data/preprocessing/train_wifi.pkl")
 
-    train_idx = np.load(f"../data/fold/fold{n_fold:>02}_train_idx.npy")
-    valid_idx = np.load(f"../data/fold/fold{n_fold:>02}_valid_idx.npy")
-    test_idx = np.load(f"../data/fold/fold{n_fold:>02}_test_idx.npy")
-
-    train_data = (waypoint[train_idx], build[train_idx], wifi[train_idx])
-    valid_data = (waypoint[valid_idx], build[valid_idx], wifi[valid_idx])
-    test_data = (waypoint[test_idx], build[test_idx], wifi[test_idx])
-
-    data_module = IndoorDataModule(config.BATCH_SIZE, train_data, valid_data, test_data)
-    data_module.setup()
-    return data_module
-
-
-def main():
-    pl.seed_everything(config.SEED)
     for n_fold in range(config.NUM_FOLD):
-        datamodule = get_datamodule(n_fold)
+        # Load index and select fold daata.
+        train_idx = np.load(f"../data/fold/fold{n_fold:>02}_train_idx.npy")
+        valid_idx = np.load(f"../data/fold/fold{n_fold:>02}_valid_idx.npy")
+        test_idx = np.load(f"../data/fold/fold{n_fold:>02}_test_idx.npy")
+
+        train_data = (waypoint[train_idx], build[train_idx], wifi[train_idx])
+        valid_data = (waypoint[valid_idx], build[valid_idx], wifi[valid_idx])
+        test_data = (waypoint[test_idx], build[test_idx], wifi[test_idx])
+        # Define and setup datamodule.
+        datamodule = IndoorDataModule(
+            config.BATCH_SIZE, train_data, valid_data, test_data
+        )
+        datamodule.setup()
+
         model = InddorModel()
         checkpoint_callback = ModelCheckpoint(monitor="valid_loss")
         early_stop_callback = EarlyStopping(
@@ -110,6 +114,17 @@ def main():
         )
         tb_logger = TensorBoardLogger(save_dir="../tb_logs", name="wifiLSTM_buidModel")
 
+        # dataloader = datamodule.train_dataloader()
+        # batch = next(iter(dataloader))
+        # x, y = batch
+
+        # model = InddorModel()
+        # z = model(x)
+        # print(z)
+        # loss_fn = MeanPositionLoss()
+        # loss = loss_fn(z, y)
+        # print(loss)
+
         trainer = Trainer(
             accelerator="dp",
             gpus=1,
@@ -119,6 +134,8 @@ def main():
         )
         trainer.fit(model=model, datamodule=datamodule)
         trainer.test(model=model, datamodule=datamodule)
+
+        break
 
 
 if __name__ == "__main__":
