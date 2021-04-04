@@ -112,7 +112,9 @@ def main():
             verbose=False,
             mode="min",
         )
-        tb_logger = TensorBoardLogger(save_dir="../tb_logs", name="wifiLSTM_buidModel")
+        tb_logger = TensorBoardLogger(
+            save_dir="../tb_logs", name="wifiLSTM_buidModel_prod"
+        )
 
         # dataloader = datamodule.train_dataloader()
         # batch = next(iter(dataloader))
@@ -134,8 +136,6 @@ def main():
         )
         trainer.fit(model=model, datamodule=datamodule)
         trainer.test(model=model, datamodule=datamodule)
-
-        break
 
 
 if __name__ == "__main__":

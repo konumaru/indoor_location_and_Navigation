@@ -47,6 +47,8 @@ delete-instance:
 connect-instance:
 	gcloud compute ssh $(INSTANCE_NAMES) --zone $(ZONE)
 
+tb-server:
+	tensorboard --logdir ./tb_logs/
 
 test-mikasa:
 	poetry run pytest -s --pdb --cov=mikasa tests/

@@ -29,7 +29,7 @@ class WifiModel(nn.Module):
         self,
         seq_len: int = 100,
         bssid_embed_dim: int = 16,
-        output_dim: int = 336,
+        output_dim: int = 18 * 16,
     ):
         super().__init__()
         input_size = 400 + bssid_embed_dim * seq_len
@@ -43,8 +43,8 @@ class WifiModel(nn.Module):
             nn.BatchNorm1d(16), nn.Linear(16, 100), nn.ReLU()
         )
         # LSTM layers.
-        self.bn1 = nn.BatchNorm1d(21)
-        self.lstm1 = nn.LSTM(100, 128, num_layers=2, dropout=0.2)
+        self.bn1 = nn.BatchNorm1d(18)
+        self.lstm1 = nn.LSTM(100, 128)
         self.lstm2 = nn.LSTM(128, 16)
 
     def forward(self, x):
@@ -57,18 +57,21 @@ class WifiModel(nn.Module):
         feat_location = torch.cat((build, bssid), dim=2)
 
         x = torch.cat((feat_location, rssi.view(-1, 100, 1)), dim=2)
-        x = torch.cat((x, freq.view(-1, 100, 1)), dim=2)
-        x = torch.cat((x, ts_diff.view(-1, 100, 1)), dim=2)
-        x = torch.cat((x, last_seen_ts_diff.view(-1, 100, 1)), dim=2)
+        # x = torch.cat((x, freq.view(-1, 100, 1)), dim=2)
+        # x = torch.cat((x, ts_diff.view(-1, 100, 1)), dim=2)
+        # x = torch.cat((x, last_seen_ts_diff.view(-1, 100, 1)), dim=2)
 
         x = x.transpose(2, 1)
         x = self.bn1(x)
         x = nn.Dropout(0.2)(x)
         x, _ = self.lstm1(x)
+        x = nn.Dropout(0.3)(x)
         x = F.relu(x)
         x, _ = self.lstm2(x)
-        x = x.view(-1, 21 * 16)
-        return x  # output dim is 336.
+        x = nn.Dropout(0.1)(x)
+        x = F.relu(x)
+        x = x.view(-1, 18 * 16)
+        return x
 
 
 class BuildModel(nn.Module):
@@ -80,7 +83,6 @@ class BuildModel(nn.Module):
         super().__init__()
         self.site_embed_dim = site_embed_dim
         self.output_dim = output_dim
-
         self.embed_site = nn.Embedding(205, site_embed_dim)
 
     def forward(self, x):
@@ -104,8 +106,15 @@ class InddorModel(LightningModule):
             nn.BatchNorm1d(256),
             nn.Linear(256, 64),
             nn.ReLU(),
+        )
+        self.layer_floor = nn.Sequential(
             nn.BatchNorm1d(64),
-            nn.Linear(64, 3),
+            nn.Linear(64, 13),
+            nn.Softmax(dim=1),
+        )
+        self.layer_position = nn.Sequential(
+            nn.BatchNorm1d(64),
+            nn.Linear(64, 2),
         )
 
     def forward(self, x):
@@ -114,6 +123,10 @@ class InddorModel(LightningModule):
         wifi_feature = self.model_wifi((build_feature, input_wifi))
 
         x = self.layers(wifi_feature)
+        floor = self.layer_floor(x)
+        floor = (torch.argmax(floor, dim=1) - 3).view(-1, 1)
+        pos = self.layer_position(x)
+        x = torch.cat((floor, pos), dim=1)
         return x
 
     def configure_optimizers(self):
@@ -131,19 +144,16 @@ class InddorModel(LightningModule):
     def training_step(self, batch, batch_idx):
         loss, metric = self.shared_step(batch)
         self.log("train_loss", loss)
-        self.log("train_metric", metric)
         return loss
 
     def validation_step(self, batch, batch_idx):
         loss, metric = self.shared_step(batch)
         self.log("valid_loss", loss)
-        self.log("valid_metric", metric)
         return loss
 
     def test_step(self, batch, batch_idx):
         loss, metric = self.shared_step(batch)
         self.log("test_loss", loss)
-        self.log("test_metric", metric)
         return loss
 
     def _comp_metric(self, y_hat, y):
@@ -189,6 +199,7 @@ def main():
 
     model = InddorModel()
     z = model(x)
+    print(z)
 
     loss_fn = MeanPositionLoss()
     loss = loss_fn(z, y)
