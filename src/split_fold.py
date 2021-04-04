@@ -1,5 +1,6 @@
 import pathlib
 import numpy as np
+from sklearn.model_selection import KFold
 from sklearn.model_selection import GroupKFold, GroupShuffleSplit
 
 from utils import timer
