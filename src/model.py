@@ -28,8 +28,8 @@ class WifiModel(nn.Module):
     def __init__(
         self,
         seq_len: int = 100,
-        bssid_embed_dim: int = 64,
-        output_dim: int = 512,
+        bssid_embed_dim: int = 16,
+        output_dim: int = 256,
     ):
         super().__init__()
         input_size = 400 + bssid_embed_dim * seq_len
@@ -74,7 +74,7 @@ class WifiModel(nn.Module):
 class BuildModel(nn.Module):
     def __init__(
         self,
-        site_embed_dim: int = 64,
+        site_embed_dim: int = 16,
         output_dim: int = 32,
     ):
         super().__init__()
@@ -127,8 +127,8 @@ class InddorModel(LightningModule):
     def shared_step(self, batch):
         x, y = batch
         z = self(x)
-        loss = self.loss_fn(*z, *y)
-        metric = self._comp_metric((y[0], z), y)
+        loss = self.loss_fn(z, y)
+        metric = self._comp_metric(z, y)
         return loss, metric
 
     def training_step(self, batch, batch_idx):
@@ -147,18 +147,18 @@ class InddorModel(LightningModule):
         loss, metric = self.shared_step(batch)
         self.log("test_loss", loss)
         self.log("test_metric", metric)
+        return loss
 
     def _comp_metric(self, y_hat, y):
-        def rmse(y_hat, y):
-            return torch.sqrt(F.mse_loss(y_hat, y))
-
         p = 15
-        floor_hat, waypoint_hat = y_hat
-        floor, waypoint = y
-        metric = torch.mean(
-            rmse(waypoint_hat, waypoint) + p * torch.abs(floor_hat - floor)
+        diff_f = y_hat[0] - y[0]
+        diff_x = y_hat[1] - y[2]
+        diff_y = y_hat[1] - y[2]
+
+        error = torch.sqrt(diff_x * diff_x + diff_y * diff_y) + p * torch.sqrt(
+            diff_f * diff_f
         )
-        return metric
+        return torch.mean(error)
 
 
 def main():
