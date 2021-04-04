@@ -29,7 +29,7 @@ class WifiModel(nn.Module):
         self,
         seq_len: int = 100,
         bssid_embed_dim: int = 16,
-        output_dim: int = 256,
+        output_dim: int = 336,
     ):
         super().__init__()
         input_size = 400 + bssid_embed_dim * seq_len
@@ -38,44 +38,44 @@ class WifiModel(nn.Module):
         self.output_dim = output_dim
         # Nunique of bssid is 185859.
         self.embed_bssid = nn.Embedding(180203 + 1, bssid_embed_dim)
-        self.layers = nn.Sequential(
-            # Layer 0
-            nn.BatchNorm1d(input_size),
-            nn.Dropout(0.2),
-            # Layer 1
-            nn.Linear(input_size, 512),
-            nn.BatchNorm1d(512),
-            nn.Dropout(0.2),
-            # Layer 2
-            nn.Linear(512, 512),
-            nn.BatchNorm1d(512),
-            nn.Dropout(0.2),
-            # Layer 3
-            nn.Linear(512, self.output_dim),
-            nn.BatchNorm1d(self.output_dim),
-            nn.Dropout(0.2),
+
+        self.layers_build = nn.Sequential(
+            nn.BatchNorm1d(16), nn.Linear(16, 100), nn.ReLU()
         )
+        # LSTM layers.
+        self.bn1 = nn.BatchNorm1d(21)
+        self.lstm1 = nn.LSTM(100, 128, num_layers=2, dropout=0.2)
+        self.lstm2 = nn.LSTM(128, 16)
 
     def forward(self, x):
-        bssid, rssi, freq, ts_diff, last_seen_ts_diff = x
+        ouput_build, (bssid, rssi, freq, ts_diff, last_seen_ts_diff) = x
+
+        build = self.layers_build(ouput_build)
+        build = build.view(-1, 100, 1)
 
         bssid = self.embed_bssid(bssid)
-        bssid = bssid.view(-1, self.seq_len * self.bssid_embed_dim)
-        rssi = rssi.view(-1, self.seq_len)
-        freq = freq.view(-1, self.seq_len)
-        ts_diff = ts_diff.view(-1, self.seq_len)
-        last_seen_ts_diff = last_seen_ts_diff.view(-1, self.seq_len)
+        feat_location = torch.cat((build, bssid), dim=2)
 
-        x = torch.cat((bssid, rssi, freq, ts_diff, last_seen_ts_diff), dim=1)
-        x = self.layers(x)
-        return x
+        x = torch.cat((feat_location, rssi.view(-1, 100, 1)), dim=2)
+        x = torch.cat((x, freq.view(-1, 100, 1)), dim=2)
+        x = torch.cat((x, ts_diff.view(-1, 100, 1)), dim=2)
+        x = torch.cat((x, last_seen_ts_diff.view(-1, 100, 1)), dim=2)
+
+        x = x.transpose(2, 1)
+        x = self.bn1(x)
+        x = nn.Dropout(0.2)(x)
+        x, _ = self.lstm1(x)
+        x = F.relu(x)
+        x, _ = self.lstm2(x)
+        x = x.view(-1, 21 * 16)
+        return x  # output dim is 336.
 
 
 class BuildModel(nn.Module):
     def __init__(
         self,
         site_embed_dim: int = 16,
-        output_dim: int = 32,
+        output_dim: int = 16,
     ):
         super().__init__()
         self.site_embed_dim = site_embed_dim
@@ -85,6 +85,7 @@ class BuildModel(nn.Module):
 
     def forward(self, x):
         x = self.embed_site(x)
+        x = x.view(-1, self.site_embed_dim)
         return x
 
 
@@ -95,7 +96,7 @@ class InddorModel(LightningModule):
         self.model_wifi = WifiModel()
         self.model_build = BuildModel()
 
-        output_dim = self.model_wifi.output_dim + self.model_build.output_dim
+        output_dim = self.model_wifi.output_dim
 
         self.layers = nn.Sequential(
             nn.Linear(output_dim, 256),
@@ -110,10 +111,9 @@ class InddorModel(LightningModule):
     def forward(self, x):
         input_build, input_wifi = x
         build_feature = self.model_build(input_build)
-        wifi_feature = self.model_wifi(input_wifi)
+        wifi_feature = self.model_wifi((build_feature, input_wifi))
 
-        x = torch.cat((build_feature, wifi_feature), dim=1)
-        x = self.layers(x)
+        x = self.layers(wifi_feature)
         return x
 
     def configure_optimizers(self):
@@ -176,9 +176,14 @@ def main():
     last_seen_ts_dff = torch.rand(size=(batch_size, 100))
     input_wifi = (bssid, rssi, freq, ts_dff, last_seen_ts_dff)
 
+    # Test BuildModel
+    model_build = BuildModel()
+    output_build = model_build(input_build)
+    print(output_build.shape)
+
     model = WifiModel()
-    z = model(input_wifi)
-    print(z)
+    output_wifi = model((output_build, input_wifi))
+    print(output_wifi.shape)
 
     x, y = (input_build, input_wifi), y
 
