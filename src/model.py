@@ -82,12 +82,9 @@ class BuildModel(nn.Module):
         self.output_dim = output_dim
 
         self.embed_site = nn.Embedding(205, site_embed_dim)
-        self.layer1 = nn.Linear(site_embed_dim, output_dim)
 
     def forward(self, x):
         x = self.embed_site(x)
-        x = x.view(-1, self.site_embed_dim)
-        x = F.relu(self.layer1(x))
         return x
 
 

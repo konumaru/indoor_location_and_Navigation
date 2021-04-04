@@ -98,10 +98,10 @@ def create_train_target() -> np.ndarray:
     return target
 
 
-# === wifi,  (bssid, rssi, frequency, ts_diff), string ===
+# === wifi,  (bssid, rssi, frequency, ts_diff, last_seen_ts_diff), string ===
 
 
-@save_cache("../data/preprocessing/bssid_map.pkl", False)
+@save_cache("../data/preprocessing/bssid_map.pkl", True)
 def create_bssid_map() -> Dict:
     wifi_train = load_pickle("../data/working/train_wifi.pkl")
     wifi_test = load_pickle("../data/working/test_wifi.pkl")
@@ -127,14 +127,24 @@ def create_train_wifi() -> np.ndarray:
     # Filtering data.
     flag = load_pickle("../data/preprocessing/train_data_flag.pkl")
     wifi = wifi[flag].astype("int64")
+    # Sort by rssi descending.
+    for i, _wifi in enumerate(wifi):
+        rssi = _wifi[1]
+        sort_idx = np.argsort(rssi)[::-1]
+        wifi[i] = _wifi[:, sort_idx]
     return wifi
 
 
-@save_cache("../data/preprocessing/test_wifi.pkl", False)
+@save_cache("../data/preprocessing/test_wifi.pkl", True)
 def create_test_wifi() -> np.ndarray:
     wifi = load_pickle("../data/working/train_wifi.pkl")
     wifi = encode_bssid(wifi)
     wifi = wifi.astype("int64")
+    # Sort by rssi descending.
+    for i, _wifi in enumerate(wifi):
+        rssi = _wifi[1]
+        sort_idx = np.argsort(rssi)[::-1]
+        wifi[i] = _wifi[:, sort_idx]
     return wifi
 
 
