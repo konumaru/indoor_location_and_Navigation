@@ -36,7 +36,6 @@ class WifiModel(nn.Module):
         self.seq_len = seq_len
         self.bssid_embed_dim = bssid_embed_dim
         self.output_dim = output_dim
-        # For  bssi
         # Nunique of bssid is 185859.
         self.embed_bssid = nn.Embedding(185860, bssid_embed_dim)
         self.layers = nn.Sequential(
@@ -99,16 +98,23 @@ class InddorModel(LightningModule):
         self.model_build = BuildModel()
 
         output_dim = self.model_wifi.output_dim + self.model_build.output_dim
-        self.layer1 = nn.Linear(output_dim, 64)
-        self.layer2 = nn.Linear(64, 3)
+
+        self.layers = nn.Sequential(
+            nn.Linear(output_dim, 256),
+            nn.ReLU(),
+            nn.BatchNorm1d(256),
+            nn.Linear(256, 64),
+            nn.ReLU(),
+            nn.BatchNorm1d(64),
+            nn.Linear(64, 3),
+        )
 
     def forward(self, x):
-        x_build = self.model_build(x[0])
-        x_wifi = self.model_wifi((x[1], x[2], x[3], x[4]))
+        build_feature = self.model_build(x[0])
+        wifi_feature = self.model_wifi((x[1], x[2], x[3], x[4]))
 
-        x = torch.cat((x_build, x_wifi), dim=1)
-        x = F.relu(self.layer1(x))
-        x = F.relu(self.layer2(x))
+        x = torch.cat((build_feature, wifi_feature), dim=1)
+        x = self.layers(x)
         return x
 
     def configure_optimizers(self):
@@ -154,6 +160,7 @@ class InddorModel(LightningModule):
 
 
 def main():
+    pl.seed_everything(42)
     batch_size = 10
     # targets.
     floor = torch.randint(100, size=(batch_size, 1))

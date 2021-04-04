@@ -117,7 +117,7 @@ def create_train_wifi():
     return data
 
 
-@save_cache("../data/working/test_wifi.pkl", False)
+@save_cache("../data/working/test_wifi.pkl")
 def create_test_wifi():
     def get_test_wifi_from_waypoints(
         waypoint: np.ndarray, max_len: int = 100
