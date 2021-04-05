@@ -103,7 +103,7 @@ def main():
         )
         datamodule.setup()
 
-        model = InddorModel()
+        model = InddorModel(lr=1e-4)
         checkpoint_callback = ModelCheckpoint(monitor="valid_loss")
         early_stop_callback = EarlyStopping(
             monitor="valid_loss",
@@ -136,6 +136,7 @@ def main():
         )
         trainer.fit(model=model, datamodule=datamodule)
         trainer.test(model=model, datamodule=datamodule)
+        break
 
 
 if __name__ == "__main__":
