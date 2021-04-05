@@ -72,7 +72,7 @@ def create_test_waypoint():
 # === wifi, (bssid, rssi, frequency, ts_diff). ===
 
 
-@save_cache("../data/working/train_wifi.pkl", True)
+@save_cache("../data/working/train_wifi.pkl", False)
 def create_train_wifi():
     def get_wifi_from_waypoints(waypoint, max_len=100):
         (site, floor, path, timestamp, x, y) = waypoint
@@ -101,9 +101,9 @@ def create_train_wifi():
             wifi = wifi[(ts_diff < 0)]
             # Extract columns of (bssid, rssi, frequency, ts_diff, last_seen_ts_diff).
             wifi = wifi[:, [2, 3, 4, 6, 7]]
-            end_idx = min(max_len, wifi.T.shape[1])
-            data[:, :end_idx] = wifi.T[:, :end_idx]
-        return data
+            # end_idx = min(max_len, wifi.T.shape[1])
+            # data[:, :end_idx] = wifi.T[:, :end_idx]
+        return wifi
 
     waypoints = load_pickle("../data/working/train_waypint.pkl")
     data = joblib.Parallel(n_jobs=-1)(
@@ -144,8 +144,8 @@ def create_test_wifi():
             wifi = wifi[(ts_diff < 0)]
             # Extract columns of (bssid, rssi, frequency, ts_diff, last_seen_ts_diff).
             wifi = wifi[:, [2, 3, 4, 6, 7]]
-            end_idx = min(max_len, wifi.T.shape[1])
-            data[:, :end_idx] = wifi.T[:, :end_idx]
+            # end_idx = min(max_len, wifi.T.shape[1])
+            # data[:, :end_idx] = wifi.T[:, :end_idx]
         return data
 
     waypoints = load_pickle("../data/working/test_waypint.pkl")

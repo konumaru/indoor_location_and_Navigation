@@ -29,7 +29,7 @@ class WifiModel(nn.Module):
         self,
         seq_len: int = 100,
         bssid_embed_dim: int = 16,
-        output_dim: int = 18 * 16,
+        output_dim: int = 64,
     ):
         super().__init__()
         input_size = 400 + bssid_embed_dim * seq_len
@@ -43,9 +43,18 @@ class WifiModel(nn.Module):
             nn.BatchNorm1d(16), nn.Linear(16, 100), nn.ReLU()
         )
         # LSTM layers.
-        self.bn1 = nn.BatchNorm1d(18)
-        self.lstm1 = nn.LSTM(100, 128)
-        self.lstm2 = nn.LSTM(128, 16)
+        self.bn1 = nn.BatchNorm1d(100)
+        self.lstm1 = nn.LSTM(18, 128)
+        self.lstm2 = nn.LSTM(128, 64)
+
+        self.layers = nn.Sequential(
+            nn.BatchNorm1d(seq_len * 64),
+            nn.Linear(seq_len * 64, 512),
+            nn.ReLU(),
+            nn.BatchNorm1d(512),
+            nn.Linear(512, output_dim),
+            nn.ReLU(),
+        )
 
     def forward(self, x):
         ouput_build, (bssid, rssi, freq, ts_diff, last_seen_ts_diff) = x
@@ -61,16 +70,20 @@ class WifiModel(nn.Module):
         # x = torch.cat((x, ts_diff.view(-1, 100, 1)), dim=2)
         # x = torch.cat((x, last_seen_ts_diff.view(-1, 100, 1)), dim=2)
 
-        x = x.transpose(2, 1)
         x = self.bn1(x)
         x = nn.Dropout(0.2)(x)
+        x = x.transpose(0, 1)
         x, _ = self.lstm1(x)
         x = nn.Dropout(0.3)(x)
         x = F.relu(x)
         x, _ = self.lstm2(x)
         x = nn.Dropout(0.1)(x)
         x = F.relu(x)
-        x = x.view(-1, 18 * 16)
+
+        x = x.transpose(0, 1)
+        x = x.reshape(-1, self.seq_len * 64)
+
+        x = self.layers(x)
         return x
 
 
@@ -115,6 +128,7 @@ class InddorModel(LightningModule):
         self.layer_position = nn.Sequential(
             nn.BatchNorm1d(64),
             nn.Linear(64, 2),
+            nn.ReLU(),
         )
 
     def forward(self, x):
