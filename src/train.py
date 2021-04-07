@@ -1,5 +1,4 @@
 import numpy as np
-from sklearn.model_selection import GroupShuffleSplit
 
 import torch
 from torch import nn

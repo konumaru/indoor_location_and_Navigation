@@ -2,6 +2,7 @@ import pathlib
 import numpy as np
 import numpy.typing as npt
 from rich.progress import track
+from sklearn.preprocessing import StandardScaler
 
 from utils import timer
 from utils import load_pickle, dump_pickle, save_cache
@@ -143,10 +144,15 @@ def create_train_wifi() -> np.ndarray:
         rssi = _wifi[1]
         sort_idx = np.argsort(rssi)[::-1]
         wifi[i] = _wifi[:, sort_idx]
+
+    ss = StandardScaler()
+    ss.fit(wifi[1])
+    wifi[1] = ss.transform(wifi[1])
+    dump_pickle("../data/preprocessing/rssi_scaler.pkl", ss)
     return wifi
 
 
-@save_cache("../data/preprocessing/test_wifi.pkl", True)
+@save_cache("../data/preprocessing/test_wifi.pkl", False)
 def create_test_wifi() -> np.ndarray:
     wifi = load_pickle("../data/working/train_wifi.pkl")
     wifi = encode_bssid(wifi)
@@ -156,6 +162,9 @@ def create_test_wifi() -> np.ndarray:
         rssi = _wifi[1]
         sort_idx = np.argsort(rssi)[::-1]
         wifi[i] = _wifi[:, sort_idx]
+
+    ss = load_pickle("../data/preprocessing/rssi_scaler.pkl")
+    wifi[1] = ss.transform(wifi[1])
     return wifi
 
 
