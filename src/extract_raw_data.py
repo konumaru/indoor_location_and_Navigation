@@ -90,20 +90,22 @@ def create_train_wifi():
             ],
             axis=0,
         )
-
         if len(wifi) > 0:
-            ts_diff = wifi[:, 0].astype("int64") - timestamp.astype("int64")
-            last_seen_ts_diff = wifi[:, 5].astype("int64") - timestamp.astype("int64")
+            ts_diff = wifi[:, 0].astype("int64") - int(timestamp)
+            last_seen_ts_diff = wifi[:, 5].astype("int64") - int(timestamp)
             # Add ts_diff and last_seen_ts_diff as feature.
             wifi = np.concatenate([wifi, ts_diff.reshape(-1, 1)], axis=1)
             wifi = np.concatenate([wifi, last_seen_ts_diff.reshape(-1, 1)], axis=1)
             # Extract latest values, except feature information.
             wifi = wifi[(ts_diff < 0)]
+            # Sort by rssi
+            sort_idx = np.argsort(wifi[:, 3].astype(int))[::-1]
+            wifi = wifi[sort_idx]
             # Extract columns of (bssid, rssi, frequency, ts_diff, last_seen_ts_diff).
             wifi = wifi[:, [2, 3, 4, 6, 7]]
-            # end_idx = min(max_len, wifi.T.shape[1])
-            # data[:, :end_idx] = wifi.T[:, :end_idx]
-        return wifi
+            end_idx = min(max_len, wifi.T.shape[1])
+            data[:, :end_idx] = wifi.T[:, :end_idx]
+        return data
 
     waypoints = load_pickle("../data/working/train_waypint.pkl")
     data = joblib.Parallel(n_jobs=-1)(
@@ -133,7 +135,6 @@ def create_test_wifi():
             ],
             axis=0,
         )
-
         if len(wifi) > 0:
             ts_diff = wifi[:, 0].astype("int64") - int(timestamp)
             last_seen_ts_diff = wifi[:, 5].astype("int64") - int(timestamp)
@@ -142,10 +143,13 @@ def create_test_wifi():
             wifi = np.concatenate([wifi, last_seen_ts_diff.reshape(-1, 1)], axis=1)
             # Extract latest values, except feature information.
             wifi = wifi[(ts_diff < 0)]
+            # Sort by rssi
+            sort_idx = np.argsort(wifi[:, 3].astype(int))[::-1]
+            wifi = wifi[sort_idx]
             # Extract columns of (bssid, rssi, frequency, ts_diff, last_seen_ts_diff).
             wifi = wifi[:, [2, 3, 4, 6, 7]]
-            # end_idx = min(max_len, wifi.T.shape[1])
-            # data[:, :end_idx] = wifi.T[:, :end_idx]
+            end_idx = min(max_len, wifi.T.shape[1])
+            data[:, :end_idx] = wifi.T[:, :end_idx]
         return data
 
     waypoints = load_pickle("../data/working/test_waypint.pkl")

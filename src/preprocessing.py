@@ -113,7 +113,7 @@ def create_train_target() -> np.ndarray:
 # === wifi,  (bssid, rssi, frequency, ts_diff, last_seen_ts_diff), string ===
 
 
-@save_cache("../data/preprocessing/bssid_map.pkl", True)
+@save_cache("../data/preprocessing/bssid_map.pkl", False)
 def create_bssid_map() -> Dict:
     wifi_train = load_pickle("../data/working/train_wifi.pkl")
     wifi_test = load_pickle("../data/working/test_wifi.pkl")
@@ -139,16 +139,11 @@ def create_train_wifi() -> np.ndarray:
     # Filtering data.
     flag = load_pickle("../data/preprocessing/train_data_flag.pkl")
     wifi = wifi[flag].astype("int64")
-    # Sort by rssi descending.
-    for i, _wifi in enumerate(wifi):
-        rssi = _wifi[1]
-        sort_idx = np.argsort(rssi)[::-1]
-        wifi[i] = _wifi[:, sort_idx]
-
-    ss = StandardScaler()
-    ss.fit(wifi[1])
-    wifi[1] = ss.transform(wifi[1])
-    dump_pickle("../data/preprocessing/rssi_scaler.pkl", ss)
+    # TODO: frequency, の欠損値を補完する
+    # Fillna of rssi.
+    avg_rssi = -53
+    is_nan = wifi[:, 1] == -999
+    wifi[:, 1][is_nan] = avg_rssi
     return wifi
 
 
@@ -157,14 +152,10 @@ def create_test_wifi() -> np.ndarray:
     wifi = load_pickle("../data/working/train_wifi.pkl")
     wifi = encode_bssid(wifi)
     wifi = wifi.astype("int64")
-    # Sort by rssi descending.
-    for i, _wifi in enumerate(wifi):
-        rssi = _wifi[1]
-        sort_idx = np.argsort(rssi)[::-1]
-        wifi[i] = _wifi[:, sort_idx]
-
-    ss = load_pickle("../data/preprocessing/rssi_scaler.pkl")
-    wifi[1] = ss.transform(wifi[1])
+    # Fillna of rssi.
+    avg_rssi = -53
+    is_nan = wifi[:, 1] == -999
+    wifi[:, 1][is_nan] = avg_rssi
     return wifi
 
 
