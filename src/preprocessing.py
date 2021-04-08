@@ -15,7 +15,40 @@ def create_use_data_flag() -> np.ndarray:
     waypoint = load_pickle("../data/working/train_waypint.pkl")
     floor = waypoint[:, 1]
     use_floor = np.array(
-        ["B3", "B2", "B1", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10"]
+        [
+            "B3",
+            "B2",
+            "B1",
+            "F1",
+            "F2",
+            "F3",
+            "F4",
+            "F5",
+            "F6",
+            "F7",
+            "F8",
+            "F9",
+            "F10",
+            "1F",
+            "2F",
+            "3F",
+            "4F",
+            "5F",
+            "6F",
+            "7F",
+            "8F",
+            "9F",
+            "L1",
+            "L2",
+            "L3",
+            "L4",
+            "L5",
+            "L6",
+            "L7",
+            "L8",
+            "L9",
+            "L10",
+        ]
     )
     use_flag = np.in1d(floor, use_floor)
     return use_flag
@@ -80,7 +113,7 @@ def create_test_build() -> np.ndarray:
 # === target, (floor, x, y, is_encoded), string ===
 
 
-@save_cache("../data/preprocessing/train_target.pkl", True)
+@save_cache("../data/preprocessing/train_target.pkl", False)
 def create_train_target() -> np.ndarray:
     waypoint = load_pickle("../data/working/train_waypint.pkl")
     # Select (floor, x, y) from (site, floor, path. timestamp, x, y)
@@ -101,6 +134,33 @@ def create_train_target() -> np.ndarray:
         "F9": 8,
         "F10": 9,
     }
+    floorNums.update(
+        {
+            "1F": 0,
+            "2F": 1,
+            "3F": 2,
+            "4F": 3,
+            "5F": 4,
+            "6F": 5,
+            "7F": 6,
+            "8F": 7,
+            "9F": 8,
+        }
+    )
+    floorNums.update(
+        {
+            "L1": 0,
+            "L2": 1,
+            "L3": 2,
+            "L4": 3,
+            "L5": 4,
+            "L6": 5,
+            "L7": 6,
+            "L8": 7,
+            "L9": 8,
+            "L10": 9,
+        }
+    )
     for key, val in floorNums.items():
         target[:, 0] = np.char.replace(target[:, 0], key, str(val))
 
@@ -135,6 +195,7 @@ def encode_bssid(wifi_feature: np.ndarray) -> np.ndarray:
 @save_cache("../data/preprocessing/train_wifi.pkl", False)
 def create_train_wifi() -> np.ndarray:
     wifi = load_pickle("../data/working/train_wifi.pkl")
+    wifi = wifi[:, :, :20]
     wifi = encode_bssid(wifi)
     # Filtering data.
     flag = load_pickle("../data/preprocessing/train_data_flag.pkl")
@@ -150,6 +211,7 @@ def create_train_wifi() -> np.ndarray:
 @save_cache("../data/preprocessing/test_wifi.pkl", False)
 def create_test_wifi() -> np.ndarray:
     wifi = load_pickle("../data/working/train_wifi.pkl")
+    wifi = wifi[:, :, :20]
     wifi = encode_bssid(wifi)
     wifi = wifi.astype("int64")
     # Fillna of rssi.

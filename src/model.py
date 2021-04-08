@@ -27,12 +27,11 @@ class MeanPositionLoss(nn.Module):
 class WifiModel(nn.Module):
     def __init__(
         self,
-        seq_len: int = 100,
+        seq_len: int = 20,
         bssid_embed_dim: int = 16,
         output_dim: int = 64,
     ):
         super().__init__()
-        input_size = 400 + bssid_embed_dim * seq_len
         self.seq_len = seq_len
         self.bssid_embed_dim = bssid_embed_dim
         self.output_dim = output_dim
@@ -42,11 +41,11 @@ class WifiModel(nn.Module):
         site_embed_dim = 16
         self.layers_build = nn.Sequential(
             nn.BatchNorm1d(site_embed_dim),
-            nn.Linear(site_embed_dim, 100),
+            nn.Linear(site_embed_dim, seq_len),
             nn.ReLU(),
         )
         # LSTM layers.
-        self.bn1 = nn.BatchNorm1d(100)
+        self.bn1 = nn.BatchNorm1d(seq_len)
         self.lstm1 = nn.LSTM(18, 128)
         self.lstm2 = nn.LSTM(128, 64)
 
@@ -63,12 +62,12 @@ class WifiModel(nn.Module):
         ouput_build, (bssid, rssi, freq, ts_diff, last_seen_ts_diff) = x
 
         build = self.layers_build(ouput_build)
-        build = build.view(-1, 100, 1)
+        build = build.view(-1, self.seq_len, 1)
 
         bssid = self.embed_bssid(bssid)
         feat_location = torch.cat((build, bssid), dim=2)
 
-        x = torch.cat((feat_location, rssi.view(-1, 100, 1)), dim=2)
+        x = torch.cat((feat_location, rssi.view(-1, self.seq_len, 1)), dim=2)
         # x = torch.cat((x, freq.view(-1, 100, 1)), dim=2)
         # x = torch.cat((x, ts_diff.view(-1, 100, 1)), dim=2)
         # x = torch.cat((x, last_seen_ts_diff.view(-1, 100, 1)), dim=2)
@@ -196,11 +195,12 @@ def main():
     build = torch.randint(100, size=(batch_size, 1))
     input_build = build
     # wifi feaatures.
-    bssid = torch.randint(100, size=(batch_size, 100))
-    rssi = torch.rand(size=(batch_size, 100))
-    freq = torch.rand(size=(batch_size, 100))
-    ts_dff = torch.rand(size=(batch_size, 100))
-    last_seen_ts_dff = torch.rand(size=(batch_size, 100))
+    seq_len = 20
+    bssid = torch.randint(100, size=(batch_size, seq_len))
+    rssi = torch.rand(size=(batch_size, seq_len))
+    freq = torch.rand(size=(batch_size, seq_len))
+    ts_dff = torch.rand(size=(batch_size, seq_len))
+    last_seen_ts_dff = torch.rand(size=(batch_size, seq_len))
     input_wifi = (bssid, rssi, freq, ts_dff, last_seen_ts_dff)
 
     # Test BuildModel
