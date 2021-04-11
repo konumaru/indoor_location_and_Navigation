@@ -35,6 +35,39 @@ def create_waypoint(filepaths: List):
     return waypoint
 
 
+@save_cache("../data/preprocessing/train_build_results.pkl", True)
+def create_build(filepaths: List):
+    def get_waypoint_from_featureStore(filepath):
+        path_id = filepath.name.split(".")[0]
+        feature = load_pickle(f"../data/working/{path_id}.pkl", verbose=False)
+        return (
+            site_map[feature.site_id],
+            feature.site_info.site_height,
+            feature.site_info.site_width,
+        )
+
+    site_map = load_pickle("../data/label_encode/map_site_id.pkl", verbose=False)
+    resutls = Parallel(n_jobs=-1)(
+        delayed(get_waypoint_from_featureStore)(filepath)
+        for filepath in track(filepaths)
+    )
+    return resutls
+
+
+def create_build_feature(filepaths: List):
+    results = create_build(filepaths)
+    site_id, site_height, site_width = zip(*results)
+
+    site_id = np.array(site_id, dtype="int32")
+    np.save("../data/preprocessing/train_site_id.npy", site_id)
+
+    site_height = np.array(site_height, dtype="float32")
+    np.save("../data/preprocessing/train_site_height.npy", site_height)
+
+    site_width = np.array(site_width, dtype="float32")
+    np.save("../data/preprocessing/train_site_width.npy", site_width)
+
+
 @save_cache("../data/preprocessing/train_wifi_results.pkl", True)
 def create_wifi():
     def get_wifi_feature(path_id, gdf):
@@ -60,12 +93,12 @@ def create_wifi():
             ts_wifi = _wifi["timestamp"].values
             pre_flag = (
                 np.ones(len(ts_wifi)).astype(bool)
-                if ts_pre_wp == None
+                if ts_pre_wp is None
                 else (ts_pre_wp < ts_wifi)
             )
             psot_flag = (
                 np.ones(len(ts_wifi)).astype(bool)
-                if ts_post_wp == None
+                if ts_post_wp is None
                 else (ts_wifi < ts_post_wp)
             )
             _wifi = _wifi[pre_flag & psot_flag]
@@ -96,7 +129,7 @@ def create_wifi():
     return results
 
 
-def create_wifi_features():
+def create_wifi_feature():
     results = create_wifi()
     bssid, rssi, freq = zip(*results)
 
@@ -119,11 +152,14 @@ def main():
         for path_filepath in floor_filepath.glob("*")
     ]
 
-    print("Create waypoint ...")
+    print("\nCreate waypoint ...")
     _ = create_waypoint(filepaths)
 
-    print("Create wifi ...")
-    _ = create_wifi_features()
+    print("\nCreate build ...")
+    _ = create_build_feature(filepaths)
+
+    print("\nCreate wifi ...")
+    _ = create_wifi_feature()
 
 
 if __name__ == "__main__":
