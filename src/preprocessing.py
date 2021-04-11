@@ -1,245 +1,52 @@
 import pathlib
 import numpy as np
-import numpy.typing as npt
+import pandas as pd
 from rich.progress import track
-from sklearn.preprocessing import StandardScaler
+from joblib import Parallel, delayed
 
-from utils import timer
-from utils import load_pickle, dump_pickle, save_cache
+from typing import List
 
-from typing import List, Dict
+from utils.common import timer
+from utils.common import load_pickle, dump_pickle, save_cache
+from utils.feature import FeatureStore
 
 
-@save_cache("../data/preprocessing/train_data_flag.pkl", True)
-def create_use_data_flag() -> np.ndarray:
-    waypoint = load_pickle("../data/working/train_waypint.pkl")
-    floor = waypoint[:, 1]
-    use_floor = np.array(
-        [
-            "B3",
-            "B2",
-            "B1",
-            "F1",
-            "F2",
-            "F3",
-            "F4",
-            "F5",
-            "F6",
-            "F7",
-            "F8",
-            "F9",
-            "F10",
-            "1F",
-            "2F",
-            "3F",
-            "4F",
-            "5F",
-            "6F",
-            "7F",
-            "8F",
-            "9F",
-            "L1",
-            "L2",
-            "L3",
-            "L4",
-            "L5",
-            "L6",
-            "L7",
-            "L8",
-            "L9",
-            "L10",
-        ]
+@save_cache("../data/preprocessing/train_waypoint.pkl")
+def create_waypoint(filepaths: List):
+    def get_waypoint_from_featureStore(filepath):
+        path_id = filepath.name.split(".")[0]
+
+        feature = load_pickle(f"../data/working/{path_id}.pkl", verbose=False)
+        wp = feature["waypoint"]
+        wp["site"] = feature.site_id
+        wp["floor"] = feature.n_floor
+        wp["path"] = feature.path_id
+        if len(wp) > 0:
+            return wp
+        else:
+            return pd.DataFrame([])
+
+    waypoint = Parallel(n_jobs=-1)(
+        delayed(get_waypoint_from_featureStore)(filepath)
+        for filepath in track(filepaths)
     )
-    use_flag = np.in1d(floor, use_floor)
-    return use_flag
-
-
-# === ids, (site, floor, path), string ===
-@save_cache("../data/preprocessing/train_ids.pkl", True)
-def create_train_ids() -> np.ndarray:
-    waypoint = load_pickle("../data/working/train_waypint.pkl")
-    # Select (site, floor, path) from (site, floor, path. timestamp, x, y)
-    ids = waypoint[:, [0, 1, 2]]
-    flag = load_pickle("../data/preprocessing/train_data_flag.pkl")
-    ids = ids[flag]
-    return ids
-
-
-# === build, (site, floor, path), string ===
-@save_cache("../data/preprocessing/site_map.pkl", True)
-def create_site_map() -> Dict:
-    waypoint_train = load_pickle("../data/working/train_waypint.pkl")
-    waypoint_test = load_pickle("../data/working/test_waypint.pkl")
-    # wifi columns is (bssid, rssi, frequency).
-    site_uniques = np.unique(
-        np.concatenate([waypoint_train[:, 0], waypoint_test[:, 0]], axis=0).ravel()
-    )
-    site_map = {bssid: int(i) for i, bssid in enumerate(site_uniques)}
-    return site_map
-
-
-def encode_site(ids: np.ndarray) -> np.ndarray:
-    site_map = load_pickle("../data/preprocessing/site_map.pkl")
-    encoded_site = [site_map[row[0]] for row in ids]
-    ids[:, 0] = np.array(encoded_site)
-    return ids
-
-
-@save_cache("../data/preprocessing/train_build.pkl", True)
-def create_train_build() -> np.ndarray:
-    waypoint = load_pickle("../data/working/train_waypint.pkl")
-    # Select (site, floor, path) from (site, floor, path. timestamp, x, y)
-    ids = waypoint[:, [0, 1, 2]]
-    # Label encode for site.
-    ids = encode_site(ids)
-    # Filtering data.
-    flag = load_pickle("../data/preprocessing/train_data_flag.pkl")
-    ids = ids[flag]
-    ids = ids[:, 0].astype("int64").reshape(-1, 1)
-    return ids
-
-
-@save_cache("../data/preprocessing/test_build.pkl", True)
-def create_test_build() -> np.ndarray:
-    waypoint = load_pickle("../data/working/test_waypint.pkl")
-    # Select (site, floor, path) from (site, floor, path. timestamp, x, y)
-    ids = waypoint[:, [0, 1, 2]]
-    # Label encode for site.
-    ids = encode_site(ids)
-    ids = ids[:, 0].astype("int64").reshape(-1, 1)
-    return ids
-
-
-# === target, (floor, x, y, is_encoded), string ===
-
-
-@save_cache("../data/preprocessing/train_target.pkl", False)
-def create_train_target() -> np.ndarray:
-    waypoint = load_pickle("../data/working/train_waypint.pkl")
-    # Select (floor, x, y) from (site, floor, path. timestamp, x, y)
-    target = waypoint[:, [1, 4, 5]]
-    # Label encode for floor
-    floorNums = {
-        "B3": -3,
-        "B2": -2,
-        "B1": -1,
-        "F1": 0,
-        "F2": 1,
-        "F3": 2,
-        "F4": 3,
-        "F5": 4,
-        "F6": 5,
-        "F7": 6,
-        "F8": 7,
-        "F9": 8,
-        "F10": 9,
-    }
-    floorNums.update(
-        {
-            "1F": 0,
-            "2F": 1,
-            "3F": 2,
-            "4F": 3,
-            "5F": 4,
-            "6F": 5,
-            "7F": 6,
-            "8F": 7,
-            "9F": 8,
-        }
-    )
-    floorNums.update(
-        {
-            "L1": 0,
-            "L2": 1,
-            "L3": 2,
-            "L4": 3,
-            "L5": 4,
-            "L6": 5,
-            "L7": 6,
-            "L8": 7,
-            "L9": 8,
-            "L10": 9,
-        }
-    )
-    for key, val in floorNums.items():
-        target[:, 0] = np.char.replace(target[:, 0], key, str(val))
-
-    # Filtering data
-    flag = load_pickle("../data/preprocessing/train_data_flag.pkl")
-    target = target[flag].astype("float64")
-    return target
-
-
-# === wifi,  (bssid, rssi, frequency, ts_diff, last_seen_ts_diff), string ===
-
-
-@save_cache("../data/preprocessing/bssid_map.pkl", False)
-def create_bssid_map() -> Dict:
-    wifi_train = load_pickle("../data/working/train_wifi.pkl")
-    wifi_test = load_pickle("../data/working/test_wifi.pkl")
-    # wifi columns is (bssid, rssi, frequency, ts_diff).
-    bssid_uniques = np.unique(
-        np.concatenate([wifi_train[:, 0], wifi_test[:, 0]], axis=0).ravel()
-    )
-    bssid_map = {bssid: int(i + 1) for i, bssid in enumerate(bssid_uniques)}
-    return bssid_map
-
-
-def encode_bssid(wifi_feature: np.ndarray) -> np.ndarray:
-    bssid_map = load_pickle("../data/preprocessing/bssid_map.pkl")
-    encoded_bssid = [[bssid_map[d] for d in row[0]] for row in wifi_feature]
-    wifi_feature[:, 0] = np.array(encoded_bssid)
-    return wifi_feature
-
-
-@save_cache("../data/preprocessing/train_wifi.pkl", False)
-def create_train_wifi() -> np.ndarray:
-    wifi = load_pickle("../data/working/train_wifi.pkl")
-    wifi = wifi[:, :, :20]
-    wifi = encode_bssid(wifi)
-    # Filtering data.
-    flag = load_pickle("../data/preprocessing/train_data_flag.pkl")
-    wifi = wifi[flag].astype("int64")
-    # TODO: frequency, の欠損値を補完する
-    # Fillna of rssi.
-    avg_rssi = -53
-    is_nan = wifi[:, 1] == -999
-    wifi[:, 1][is_nan] = avg_rssi
-    return wifi
-
-
-@save_cache("../data/preprocessing/test_wifi.pkl", False)
-def create_test_wifi() -> np.ndarray:
-    wifi = load_pickle("../data/working/train_wifi.pkl")
-    wifi = wifi[:, :, :20]
-    wifi = encode_bssid(wifi)
-    wifi = wifi.astype("int64")
-    # Fillna of rssi.
-    avg_rssi = -53
-    is_nan = wifi[:, 1] == -999
-    wifi[:, 1][is_nan] = avg_rssi
-    return wifi
+    waypoint = pd.concat(waypoint, axis=0).reset_index(drop=True)
+    return waypoint
 
 
 def main():
-    # Dump flag.
-    print("Create data flag ...")
-    _ = create_use_data_flag()
-    _ = create_train_ids()
+    src_dir = pathlib.Path("../data/raw/train/")
+    filepaths = [
+        path_filepath
+        for site_filepath in src_dir.glob("*")
+        for floor_filepath in site_filepath.glob("*")
+        for path_filepath in floor_filepath.glob("*")
+    ]
 
-    print("\nCreate target ...")
-    _ = create_train_target()
-
-    print("\nCreate build ...")
-    _ = create_site_map()
-    _ = create_train_build()
-    _ = create_test_build()
-
-    print("\nCreate wifi ...")
-    _ = create_bssid_map()
-    _ = create_train_wifi()
-    _ = create_test_wifi()
+    print("Create waypoint ...")
+    _ = create_waypoint(filepaths)
 
 
 if __name__ == "__main__":
-    main()
+    with timer("Creat Features"):
+        main()

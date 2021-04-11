@@ -9,6 +9,8 @@ from pathlib import Path
 from pylab import imread
 import matplotlib.pyplot as plt
 
+# Origin: https://www.kaggle.com/kenmatsu4/feature-store-for-indoor-location-navigation
+
 
 def un_pickle(filename):
     with open(filename, "rb") as fo:
@@ -325,9 +327,12 @@ class FeatureStore:
             return None
 
     def save(self):
-        # to be implemented
         with open(f"{self.save_path}/{self.path_id}.pkl", "wb") as f:
             pickle.dump(self, f, -1)
+
+    def load(self):
+        with open(f"{self.save_path}/{self.path_id}.pkl", "rb") as fo:
+            self = pickle.load(fo)
 
 
 class SiteInfo:
