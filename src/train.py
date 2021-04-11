@@ -33,12 +33,12 @@ class IndoorDataset(Dataset):
         wifi_rssi = np.load(featfure_dir / "train_wifi_rssi.npy")
         wifi_freq = np.load(featfure_dir / "train_wifi_freq.npy")
 
-        wp = load_pickle(featfure_dir / "train_waypoint.pkl")
+        wp = load_pickle(featfure_dir / "train_waypoint.pkl", verbose=False)
         wp = wp[["floor", "x", "y"]].to_numpy()
 
-        self.site_id = site_id[data_index]
-        self.site_height = site_height[data_index]
-        self.site_width = site_width[data_index]
+        self.site_id = site_id[data_index].reshape(-1, 1)
+        self.site_height = site_height[data_index].reshape(-1, 1)
+        self.site_width = site_width[data_index].reshape(-1, 1)
 
         self.wifi_bssid = wifi_bssid[data_index]
         self.wifi_rssi = wifi_rssi[data_index]
@@ -50,27 +50,33 @@ class IndoorDataset(Dataset):
         return len(self.site_id)
 
     def __getitem__(self, idx):
-        x = (
+        x_build = (
             self.site_id[idx],
             self.site_height[idx],
             self.site_width[idx],
+        )
+        x_wifi = (
             self.wifi_bssid[idx],
             self.wifi_rssi[idx],
             self.wifi_freq[idx],
         )
+        x = (x_build, x_wifi)
         y = self.wp[idx]
         return x, y
 
 
 class IndoorDataModule(pl.LightningDataModule):
-    def __init__(self, batch_size):
+    def __init__(self, batch_size, train_idx, valid_idx, test_idx):
         super().__init__()
         self.batch_size = batch_size
+        self.train_idx = train_idx
+        self.valid_idx = valid_idx
+        self.test_idx = test_idx
 
-    def setup(self, train_idx, valid_idx, test_idx, stage=None):
-        self.train_dataset = IndoorDataset(train_idx)
-        self.valid_dataset = IndoorDataset(valid_idx)
-        self.test_dataset = IndoorDataset(test_idx)
+    def setup(self, stage=None):
+        self.train_dataset = IndoorDataset(self.train_idx)
+        self.valid_dataset = IndoorDataset(self.valid_idx)
+        self.test_dataset = IndoorDataset(self.test_idx)
 
     def train_dataloader(self):
         return DataLoader(
@@ -106,52 +112,43 @@ def main():
         valid_idx = np.load(f"../data/fold/fold{n_fold:>02}_valid_idx.npy")
         test_idx = np.load(f"../data/fold/fold{n_fold:>02}_test_idx.npy")
 
-        print(test_idx.max())
-        featfure_dir = pathlib.Path("../data/preprocessing/")
-        site_id = np.load(featfure_dir / "train_site_id.npy")
-        print(site_id.shape)
-        # print(site_id[test_idx])
-
-        break
-
         # Define and setup datamodule.
-        datamodule = IndoorDataModule(config.BATCH_SIZE)
-        datamodule.setup(train_idx, valid_idx, test_idx)
+        datamodule = IndoorDataModule(config.BATCH_SIZE, train_idx, valid_idx, test_idx)
+        datamodule.setup()
 
-    #     model = InddorModel(lr=1e-4)
-    #     checkpoint_callback = ModelCheckpoint(monitor="valid_loss")
-    #     early_stop_callback = EarlyStopping(
-    #         monitor="valid_loss",
-    #         min_delta=0.00,
-    #         patience=20,
-    #         verbose=False,
-    #         mode="min",
-    #     )
-    #     tb_logger = TensorBoardLogger(
-    #         save_dir="../tb_logs", name="wifiLSTM_buidModel_prod"
-    #     )
+        model = InddorModel(lr=1e-4)
+        checkpoint_callback = ModelCheckpoint(monitor="valid_loss")
+        early_stop_callback = EarlyStopping(
+            monitor="valid_loss",
+            min_delta=0.00,
+            patience=20,
+            verbose=False,
+            mode="min",
+        )
+        tb_logger = TensorBoardLogger(save_dir="../tb_logs", name="Baseline")
 
-    #     # dataloader = datamodule.train_dataloader()
-    #     # batch = next(iter(dataloader))
-    #     # x, y = batch
+        dataloader = datamodule.train_dataloader()
+        batch = next(iter(dataloader))
+        x, y = batch
+        print(x)
 
-    #     # model = InddorModel()
-    #     # z = model(x)
-    #     # print(z)
-    #     # loss_fn = MeanPositionLoss()
-    #     # loss = loss_fn(z, y)
-    #     # print(loss)
+        model = InddorModel()
+        z = model(x)
+        print(z)
+        loss_fn = MeanPositionLoss()
+        loss = loss_fn(z, y)
+        print(loss)
 
-    #     trainer = Trainer(
-    #         accelerator="dp",
-    #         gpus=1,
-    #         max_epochs=200,
-    #         callbacks=[checkpoint_callback, early_stop_callback],
-    #         logger=tb_logger,
-    #     )
-    #     trainer.fit(model=model, datamodule=datamodule)
-    #     trainer.test(model=model, datamodule=datamodule)
-    # break
+        # trainer = Trainer(
+        #     accelerator=None,  # "dp",
+        #     gpus=None,  # 1,
+        #     max_epochs=200,
+        #     callbacks=[checkpoint_callback, early_stop_callback],
+        #     logger=tb_logger,
+        # )
+        # trainer.fit(model=model, datamodule=datamodule)
+        # trainer.test(model=model, datamodule=datamodule)
+        break
 
 
 if __name__ == "__main__":

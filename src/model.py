@@ -36,7 +36,7 @@ class WifiModel(nn.Module):
         self.bssid_embed_dim = bssid_embed_dim
         self.output_dim = output_dim
         # Nunique of bssid is ___.
-        self.embed_bssid = nn.Embedding(180203 + 1, bssid_embed_dim)
+        self.embed_bssid = nn.Embedding(237452 + 1, bssid_embed_dim)
 
         site_embed_dim = 16
         self.layers_build = nn.Sequential(

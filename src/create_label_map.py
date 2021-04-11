@@ -32,7 +32,7 @@ def create_site_map(filepaths: List):
     return siteId_map
 
 
-@save_cache("../data/label_encode/map_bssid.pkl", True)
+@save_cache("../data/label_encode/map_bssid.pkl", False)
 def create_bssid_map(filepaths: List):
     def get_bssid_from_featureStore(filepath):
         site_id = filepath.parent.parent.name
@@ -52,7 +52,7 @@ def create_bssid_map(filepaths: List):
     bssid = np.concatenate(bssid, axis=0)
     unique_bsid = np.unique(bssid)
 
-    bssid_map = {_bssid: i + 1 for i, _bssid in enumerate(bssid)}
+    bssid_map = {_bssid: i + 1 for i, _bssid in enumerate(unique_bsid)}
     return bssid_map
 
 

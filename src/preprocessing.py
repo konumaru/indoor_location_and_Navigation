@@ -35,7 +35,7 @@ def create_waypoint(filepaths: List):
     return waypoint
 
 
-@save_cache("../data/preprocessing/train_build_results.pkl", False)
+@save_cache("../data/preprocessing/train_build_results.pkl", True)
 def create_build():
     def get_waypoint_from_featureStore(path_id):
         feature = load_pickle(f"../data/working/{path_id}.pkl", verbose=False)
@@ -68,7 +68,7 @@ def create_build_feature():
     np.save("../data/preprocessing/train_site_width.npy", site_width)
 
 
-@save_cache("../data/preprocessing/train_wifi_results.pkl", True)
+@save_cache("../data/preprocessing/train_wifi_results.pkl", False)
 def create_wifi():
     def get_wifi_feature(path_id, gdf):
         seq_len = 100
@@ -133,7 +133,7 @@ def create_wifi_feature():
     results = create_wifi()
     bssid, rssi, freq = zip(*results)
 
-    bssid = np.concatenate(bssid, axis=0)
+    bssid = np.concatenate(bssid, axis=0).astype("int32")
     np.save("../data/preprocessing/train_wifi_bssid.npy", bssid)
 
     rssi = np.concatenate(rssi, axis=0)
