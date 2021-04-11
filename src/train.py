@@ -17,7 +17,13 @@ from utils.common import load_pickle
 
 from model import InddorModel, MeanPositionLoss
 
-import config
+
+DEBUG = True
+
+if DEBUG:
+    from config import DebugConfig as Config
+else:
+    from config import Config as Config
 
 
 class IndoorDataset(Dataset):
@@ -98,60 +104,50 @@ class IndoorDataModule(pl.LightningDataModule):
 
 
 def main():
-    pl.seed_everything(config.SEED)
+    pl.seed_everything(Config.SEED)
 
-    for n_fold in range(config.NUM_FOLD):
+    for n_fold in range(Config.NUM_FOLD):
         # Load index and select fold daata.
         train_idx = np.load(f"../data/fold/fold{n_fold:>02}_train_idx.npy")
         valid_idx = np.load(f"../data/fold/fold{n_fold:>02}_valid_idx.npy")
         test_idx = np.load(f"../data/fold/fold{n_fold:>02}_test_idx.npy")
 
-        print(test_idx.max())
-        featfure_dir = pathlib.Path("../data/preprocessing/")
-        site_id = np.load(featfure_dir / "train_site_id.npy")
-        print(site_id.shape)
-        # print(site_id[test_idx])
-
-        break
-
         # Define and setup datamodule.
-        datamodule = IndoorDataModule(config.BATCH_SIZE)
+        datamodule = IndoorDataModule(Config.BATCH_SIZE)
         datamodule.setup(train_idx, valid_idx, test_idx)
 
-    #     model = InddorModel(lr=1e-4)
-    #     checkpoint_callback = ModelCheckpoint(monitor="valid_loss")
-    #     early_stop_callback = EarlyStopping(
-    #         monitor="valid_loss",
-    #         min_delta=0.00,
-    #         patience=20,
-    #         verbose=False,
-    #         mode="min",
-    #     )
-    #     tb_logger = TensorBoardLogger(
-    #         save_dir="../tb_logs", name="wifiLSTM_buidModel_prod"
-    #     )
+        model = InddorModel(lr=1e-4)
+        checkpoint_callback = ModelCheckpoint(monitor="valid_loss")
+        early_stop_callback = EarlyStopping(
+            monitor="valid_loss",
+            min_delta=0.00,
+            patience=20,
+            verbose=False,
+            mode="min",
+        )
+        tb_logger = TensorBoardLogger(save_dir="../tb_logs", name="Baseline")
 
-    #     # dataloader = datamodule.train_dataloader()
-    #     # batch = next(iter(dataloader))
-    #     # x, y = batch
+        # dataloader = datamodule.train_dataloader()
+        # batch = next(iter(dataloader))
+        # x, y = batch
 
-    #     # model = InddorModel()
-    #     # z = model(x)
-    #     # print(z)
-    #     # loss_fn = MeanPositionLoss()
-    #     # loss = loss_fn(z, y)
-    #     # print(loss)
+        # model = InddorModel()
+        # z = model(x)
+        # print(z)
+        # loss_fn = MeanPositionLoss()
+        # loss = loss_fn(z, y)
+        # print(loss)
 
-    #     trainer = Trainer(
-    #         accelerator="dp",
-    #         gpus=1,
-    #         max_epochs=200,
-    #         callbacks=[checkpoint_callback, early_stop_callback],
-    #         logger=tb_logger,
-    #     )
-    #     trainer.fit(model=model, datamodule=datamodule)
-    #     trainer.test(model=model, datamodule=datamodule)
-    # break
+        trainer = Trainer(
+            accelerator=Config.accelerator,
+            gpus=Config.gpus,
+            max_epochs=Config.NUM_EPOCH,
+            callbacks=[checkpoint_callback, early_stop_callback],
+            logger=tb_logger,
+        )
+        trainer.fit(model=model, datamodule=datamodule)
+        trainer.test(model=model, datamodule=datamodule)
+        break
 
 
 if __name__ == "__main__":

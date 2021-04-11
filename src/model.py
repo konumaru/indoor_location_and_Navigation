@@ -31,7 +31,7 @@ class WifiModel(nn.Module):
         bssid_embed_dim: int = 16,
         output_dim: int = 64,
     ):
-        super().__init__()
+        super(WifiModel, self).__init__()
         self.seq_len = seq_len
         self.bssid_embed_dim = bssid_embed_dim
         self.output_dim = output_dim
@@ -89,7 +89,7 @@ class BuildModel(nn.Module):
         site_embed_dim: int = 16,
         output_dim: int = 8,
     ):
-        super().__init__()
+        super(BuildModel, self).__init__()
         self.site_embed_dim = site_embed_dim
         self.output_dim = output_dim
         self.embed_site = nn.Embedding(205, site_embed_dim)
@@ -112,7 +112,7 @@ class BuildModel(nn.Module):
 
 class InddorModel(LightningModule):
     def __init__(self, lr: float = 1e-3):
-        super().__init__()
+        super(InddorModel, self).__init__()
         self.loss_fn = MeanPositionLoss()
         self.model_wifi = WifiModel()
         self.model_build = BuildModel()
