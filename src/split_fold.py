@@ -1,28 +1,26 @@
 import pathlib
 import numpy as np
 from sklearn.model_selection import KFold, train_test_split
-from sklearn.model_selection import GroupKFold, GroupShuffleSplit
 
-from utils import timer
-from utils import load_pickle, dump_pickle
+from utils.common import timer
+from utils.common import load_pickle, dump_pickle
 
 import config
 
 
 def main():
     # ids, (site, floor, path)
-    ids = load_pickle("../data/preprocessing/train_ids.pkl")
+    wp = load_pickle("../data/preprocessing/train_waypoint.pkl")
 
-    path = ids[:, 2]
-    cv = GroupKFold(n_splits=3)
-    for n_fold, (train_idx, test_idx) in enumerate(cv.split(ids, groups=path)):
+    cv = KFold(n_splits=5)
+    for n_fold, (train_idx, test_idx) in enumerate(cv.split(wp)):
         print(f"Fold {n_fold:>02}")
 
         valid_idx, test_idx = train_test_split(test_idx, test_size=0.5)
 
-        train_unique = np.unique(ids[train_idx, 2])
-        valid_unique = np.unique(ids[valid_idx, 2])
-        test_unique = np.unique(ids[test_idx, 2])
+        train_unique = np.unique(wp.loc[train_idx, "path"])
+        valid_unique = np.unique(wp.loc[valid_idx, "path"])
+        test_unique = np.unique(wp.loc[test_idx, "path"])
 
         print(
             f"\tTrain size: {len(train_idx)}",
