@@ -15,7 +15,7 @@ from utils.common import load_pickle, dump_pickle, save_cache
 from utils.feature import FeatureStore
 
 
-@save_cache("../data/label_encode/map_bssid.pkl")
+@save_cache("../data/label_encode/map_bssid.pkl", False)
 def create_bssid_map():
     def get_bssid_from_featureStore(filepath):
         site_id = filepath.parent.parent.name
@@ -43,7 +43,7 @@ def create_bssid_map():
     bssid = np.concatenate(bssid, axis=0)
     unique_bsid = np.unique(bssid)
 
-    bssid_map = {_bssid: i for i, _bssid in enumerate(bssid)}
+    bssid_map = {_bssid: i + 1 for i, _bssid in enumerate(bssid)}
     return bssid_map
 
 
