@@ -35,10 +35,9 @@ def create_waypoint(filepaths: List):
     return waypoint
 
 
-@save_cache("../data/preprocessing/train_build_results.pkl", True)
-def create_build(filepaths: List):
-    def get_waypoint_from_featureStore(filepath):
-        path_id = filepath.name.split(".")[0]
+@save_cache("../data/preprocessing/train_build_results.pkl", False)
+def create_build():
+    def get_waypoint_from_featureStore(path_id):
         feature = load_pickle(f"../data/working/{path_id}.pkl", verbose=False)
         return (
             site_map[feature.site_id],
@@ -46,16 +45,17 @@ def create_build(filepaths: List):
             feature.site_info.site_width,
         )
 
+    waypoint = load_pickle("../data/preprocessing/train_waypoint.pkl", verbose=False)
     site_map = load_pickle("../data/label_encode/map_site_id.pkl", verbose=False)
     resutls = Parallel(n_jobs=-1)(
         delayed(get_waypoint_from_featureStore)(filepath)
-        for filepath in track(filepaths)
+        for filepath in track(waypoint["path"].values)
     )
     return resutls
 
 
-def create_build_feature(filepaths: List):
-    results = create_build(filepaths)
+def create_build_feature():
+    results = create_build()
     site_id, site_height, site_width = zip(*results)
 
     site_id = np.array(site_id, dtype="int32")
@@ -156,7 +156,7 @@ def main():
     _ = create_waypoint(filepaths)
 
     print("\nCreate build ...")
-    _ = create_build_feature(filepaths)
+    _ = create_build_feature()
 
     print("\nCreate wifi ...")
     _ = create_wifi_feature()

@@ -27,7 +27,7 @@ class MeanPositionLoss(nn.Module):
 class WifiModel(nn.Module):
     def __init__(
         self,
-        seq_len: int = 20,
+        seq_len: int = 100,
         bssid_embed_dim: int = 16,
         output_dim: int = 64,
     ):
@@ -59,18 +59,12 @@ class WifiModel(nn.Module):
         )
 
     def forward(self, x):
-        ouput_build, (bssid, rssi, freq, ts_diff, last_seen_ts_diff) = x
+        (wifi_bssid, wifi_rssi, wifi_freq) = x
 
-        build = self.layers_build(ouput_build)
-        build = build.view(-1, self.seq_len, 1)
-
-        bssid = self.embed_bssid(bssid)
-        feat_location = torch.cat((build, bssid), dim=2)
-
-        x = torch.cat((feat_location, rssi.view(-1, self.seq_len, 1)), dim=2)
-        # x = torch.cat((x, freq.view(-1, 100, 1)), dim=2)
-        # x = torch.cat((x, ts_diff.view(-1, 100, 1)), dim=2)
-        # x = torch.cat((x, last_seen_ts_diff.view(-1, 100, 1)), dim=2)
+        bssid_vec = self.embed_bssid(wifi_bssid)
+        wifi_rssi = wifi_rssi.view(-1, self.seq_len, 1)
+        wifi_freq = wifi_freq.view(-1, self.seq_len, 1)
+        x = torch.cat((bssid_vec, wifi_rssi, wifi_freq), dim=2)
 
         x = self.bn1(x)
         x = nn.Dropout(0.2)(x)
@@ -93,16 +87,26 @@ class BuildModel(nn.Module):
     def __init__(
         self,
         site_embed_dim: int = 16,
-        output_dim: int = 16,
+        output_dim: int = 8,
     ):
         super().__init__()
         self.site_embed_dim = site_embed_dim
         self.output_dim = output_dim
         self.embed_site = nn.Embedding(205, site_embed_dim)
 
+        self.layers = nn.Sequential(
+            nn.Linear(site_embed_dim + 2, 16),
+            nn.ReLU(),
+            nn.Linear(16, output_dim),
+        )
+
     def forward(self, x):
-        x = self.embed_site(x)
+        site_id, site_height, site_width = x
+        x = self.embed_site(site_id)
         x = x.view(-1, self.site_embed_dim)
+
+        x = torch.cat((x, site_height, site_width), dim=1)
+        x = self.layers(x)
         return x
 
 
@@ -113,7 +117,7 @@ class InddorModel(LightningModule):
         self.model_wifi = WifiModel()
         self.model_build = BuildModel()
 
-        output_dim = self.model_wifi.output_dim
+        output_dim = self.model_build.output_dim + self.model_wifi.output_dim
 
         self.layers = nn.Sequential(
             nn.Linear(output_dim, 256),
@@ -134,11 +138,12 @@ class InddorModel(LightningModule):
         )
 
     def forward(self, x):
-        input_build, input_wifi = x
-        build_feature = self.model_build(input_build)
-        wifi_feature = self.model_wifi((build_feature, input_wifi))
+        x_build, x_wifi = x
+        build_feature = self.model_build(x_build)
+        wifi_feature = self.model_wifi(x_wifi)
 
-        x = self.layers(wifi_feature)
+        x = torch.cat((build_feature, wifi_feature), dim=1)
+        x = self.layers(x)
         floor = self.layer_floor(x)
         floor = (torch.argmax(floor, dim=1) - 3).view(-1, 1)
         pos = self.layer_position(x)
@@ -186,33 +191,35 @@ class InddorModel(LightningModule):
 
 def main():
     pl.seed_everything(42)
+
     batch_size = 10
-    # targets.
-    floor = torch.randint(100, size=(batch_size, 1))
+
+    floor = torch.randint(7, size=(batch_size, 1))
     waypoint = torch.rand(size=(batch_size, 2))
+
+    site_id = torch.randint(100, size=(batch_size, 1))
+    site_height = torch.rand(size=(batch_size, 1))
+    site_width = torch.rand(size=(batch_size, 1))
+
+    seq_len = 100
+    wifi_bssid = torch.randint(100, size=(batch_size, seq_len))
+    wifi_rssi = torch.rand(size=(batch_size, seq_len))
+    wifi_freq = torch.rand(size=(batch_size, seq_len))
+
+    x = ((site_id, site_height, site_width), (wifi_bssid, wifi_rssi, wifi_freq))
     y = torch.cat((floor, waypoint), dim=1)
-    # build features.
-    build = torch.randint(100, size=(batch_size, 1))
-    input_build = build
-    # wifi feaatures.
-    seq_len = 20
-    bssid = torch.randint(100, size=(batch_size, seq_len))
-    rssi = torch.rand(size=(batch_size, seq_len))
-    freq = torch.rand(size=(batch_size, seq_len))
-    ts_dff = torch.rand(size=(batch_size, seq_len))
-    last_seen_ts_dff = torch.rand(size=(batch_size, seq_len))
-    input_wifi = (bssid, rssi, freq, ts_dff, last_seen_ts_dff)
 
     # Test BuildModel
+    x_build = (site_id, site_height, site_width)
     model_build = BuildModel()
-    output_build = model_build(input_build)
+    output_build = model_build(x_build)
     print(output_build.shape)
 
+    # Test WifiModel
+    x_wifi = (wifi_bssid, wifi_rssi, wifi_freq)
     model = WifiModel()
-    output_wifi = model((output_build, input_wifi))
+    output_wifi = model(x_wifi)
     print(output_wifi.shape)
-
-    x, y = (input_build, input_wifi), y
 
     model = InddorModel()
     z = model(x)
