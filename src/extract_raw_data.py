@@ -10,166 +10,30 @@ from typing import Dict
 
 import config
 
-from utils import timer
-from utils import load_pickle, dump_pickle, save_cache
-
-
-def get_data_from_pathtxt(
-    filepath: pathlib.PosixPath, data_type: str, is_join_ids: bool = False
-) -> np.ndarray:
-    with open(filepath) as f:
-        lines = f.readlines()
-
-    data = []
-    for line in lines:
-        tmp = line.strip().split("\t")
-        if tmp[1] == data_type:
-            data.append(tmp)
-
-    data = np.array(data)
-    # Drop data_type column.
-    if data.shape[0] > 0:
-        data = np.delete(data, 1, axis=1)
-    # Concatenate site, floor and path.
-    if is_join_ids:
-        site_id = filepath.parent.parent.name
-        floor_id = filepath.parent.name
-        path_id = filepath.name.split(".")[0]
-        site_floor_path = np.tile([site_id, floor_id, path_id], (data.shape[0], 1))
-        data = np.concatenate([site_floor_path, data], axis=1)
-    return data
-
-
-# === waypint, (site, floor, path. timestamp, x, y), string ===
-
-
-@save_cache("../data/working/train_waypint.pkl", use_cache=True)
-def create_train_waypoint():
-    src_dir = pathlib.Path("../data/raw/train/")
-    data = joblib.Parallel(n_jobs=-1)(
-        joblib.delayed(get_data_from_pathtxt)(path_filepath, "TYPE_WAYPOINT", True)
-        for site_filepath in src_dir.glob("*")
-        for floor_filepath in site_filepath.glob("*")
-        for path_filepath in floor_filepath.glob("*")
-    )
-    waypoint = np.concatenate(data, axis=0)
-    return waypoint
-
-
-@save_cache("../data/working/test_waypint.pkl", use_cache=True)
-def create_test_waypoint():
-    waypoint = pd.read_csv("../data/raw/sample_submission.csv")
-    waypoint[["site", "path", "timestamp"]] = waypoint["site_path_timestamp"].str.split(
-        "_", expand=True
-    )
-    waypoint.drop(["site_path_timestamp"], axis=1, inplace=True)
-
-    waypoint = waypoint[["site", "floor", "path", "timestamp", "x", "y"]].astype(str)
-    waypoint = waypoint.to_numpy()
-    return waypoint
-
-
-# === wifi, (bssid, rssi, frequency, ts_diff). ===
-
-
-@save_cache("../data/working/train_wifi.pkl", False)
-def create_train_wifi():
-    def get_wifi_from_waypoints(waypoint, max_len=100):
-        (site, floor, path, timestamp, x, y) = waypoint
-        path_filepath = pathlib.Path(f"../data/raw/train/{site}/{floor}/{path}.txt")
-        # wifi is (timestamp, ssid, bssid, rssi, frequency, last_seen_timestamp)
-        wifi = get_data_from_pathtxt(path_filepath, "TYPE_WIFI")
-
-        data = np.concatenate(
-            [
-                np.tile("nan", (1, 100)).astype("<U40"),  # bssid
-                np.tile("-999", (1, 100)).astype("<U40"),  # rssi
-                np.tile("-999", (1, 100)).astype("<U40"),  # frequency
-                np.tile("999", (1, 100)).astype("<U40"),  # ts_diff
-                np.tile("999", (1, 100)).astype("<U40"),  # last_seen_ts_diff
-            ],
-            axis=0,
-        )
-        if len(wifi) > 0:
-            ts_diff = wifi[:, 0].astype("int64") - int(timestamp)
-            last_seen_ts_diff = wifi[:, 5].astype("int64") - int(timestamp)
-            # Add ts_diff and last_seen_ts_diff as feature.
-            wifi = np.concatenate([wifi, ts_diff.reshape(-1, 1)], axis=1)
-            wifi = np.concatenate([wifi, last_seen_ts_diff.reshape(-1, 1)], axis=1)
-            # Extract latest values, except feature information.
-            wifi = wifi[(ts_diff < 0)]
-            # Sort by rssi
-            sort_idx = np.argsort(wifi[:, 3].astype(int))[::-1]
-            wifi = wifi[sort_idx]
-            # Extract columns of (bssid, rssi, frequency, ts_diff, last_seen_ts_diff).
-            wifi = wifi[:, [2, 3, 4, 6, 7]]
-            end_idx = min(max_len, wifi.T.shape[1])
-            data[:, :end_idx] = wifi.T[:, :end_idx]
-        return data
-
-    waypoints = load_pickle("../data/working/train_waypint.pkl")
-    data = joblib.Parallel(n_jobs=-1)(
-        joblib.delayed(get_wifi_from_waypoints)(waypoint)
-        for waypoint in track(waypoints)
-    )
-    data = np.array(data)
-    return data
-
-
-@save_cache("../data/working/test_wifi.pkl", False)
-def create_test_wifi():
-    def get_test_wifi_from_waypoints(
-        waypoint: np.ndarray, max_len: int = 100
-    ) -> np.ndarray:
-        (site, floor, path, timestamp, x, y) = waypoint
-        path_filepath = pathlib.Path(f"../data/raw/test/{path}.txt")
-        wifi = get_data_from_pathtxt(path_filepath, "TYPE_WIFI")
-
-        data = np.concatenate(
-            [
-                np.tile("nan", (1, 100)).astype("<U40"),  # bssid
-                np.tile("-999", (1, 100)).astype("<U40"),  # rssi
-                np.tile("-999", (1, 100)).astype("<U40"),  # frequency
-                np.tile("999", (1, 100)).astype("<U40"),  # ts_diff
-                np.tile("999", (1, 100)).astype("<U40"),  # last_seen_ts_diff
-            ],
-            axis=0,
-        )
-        if len(wifi) > 0:
-            ts_diff = wifi[:, 0].astype("int64") - int(timestamp)
-            last_seen_ts_diff = wifi[:, 5].astype("int64") - int(timestamp)
-            # Add ts_diff and last_seen_ts_diff as feature.
-            wifi = np.concatenate([wifi, ts_diff.reshape(-1, 1)], axis=1)
-            wifi = np.concatenate([wifi, last_seen_ts_diff.reshape(-1, 1)], axis=1)
-            # Extract latest values, except feature information.
-            wifi = wifi[(ts_diff < 0)]
-            # Sort by rssi
-            sort_idx = np.argsort(wifi[:, 3].astype(int))[::-1]
-            wifi = wifi[sort_idx]
-            # Extract columns of (bssid, rssi, frequency, ts_diff, last_seen_ts_diff).
-            wifi = wifi[:, [2, 3, 4, 6, 7]]
-            end_idx = min(max_len, wifi.T.shape[1])
-            data[:, :end_idx] = wifi.T[:, :end_idx]
-        return data
-
-    waypoints = load_pickle("../data/working/test_waypint.pkl")
-    data = joblib.Parallel(n_jobs=-1)(
-        joblib.delayed(get_test_wifi_from_waypoints)(waypoint)
-        for waypoint in track(waypoints)
-    )
-    data = np.array(data)
-    return data
+from utils.common import timer
+from utils.common import load_pickle, dump_pickle, save_cache
+from utils.feature import FeatureStore
 
 
 def main():
-    # Create data
-    print("Create waypoint ...")
-    _ = create_train_waypoint()
-    _ = create_test_waypoint()
+    src_dir = pathlib.Path("../data/raw/train/")
+    filepaths = [
+        path_filepath
+        for site_filepath in src_dir.glob("*")
+        for floor_filepath in site_filepath.glob("*")
+        for path_filepath in floor_filepath.glob("*")
+    ]
 
-    print("Create wifi ... ")
-    _ = create_train_wifi()
-    _ = create_test_wifi()
+    for filepath in track(filepaths):
+        site_id = filepath.parent.parent.name
+        floor = filepath.parent.name
+        path_id = filepath.name.split(".")[0]
+
+        feature = FeatureStore(
+            site_id=site_id, floor=floor, path_id=path_id, input_path="../data/raw/"
+        )
+        feature.load_all_data()
+        feature.save()
 
 
 if __name__ == "__main__":
