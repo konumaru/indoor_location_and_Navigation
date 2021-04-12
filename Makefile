@@ -9,16 +9,18 @@ INSTANCE_NAMES := $(INSTANCE_NAMES)
 ADDRESS := $(ADDRESS)
 SSH_KEY_PATH := $(SSH_KEY_PATH)
 STARTUP_SCRIPT := $(abspath $(STARTUP_SCRIPT))
-ZONE := asia-northeast1-c
+ZONE := asia-east1-c
+MACHINE_TYPE := n1-highmem-8
+GPU_TYPE := nvidia-tesla-v100
 
 
 create-instance:
 	gcloud compute instances create $(INSTANCE_NAMES) \
-		--machine-type n1-highmem-16 \
+		--machine-type $(MACHINE_TYPE) \
 		--zone $(ZONE) \
 		--network-interface address=$(ADDRESS) \
 		--metadata-from-file ssh-keys=$(SSH_KEY_PATH) \
-		--accelerator type=nvidia-tesla-t4,count=1 \
+		--accelerator type=$(GPU_TYPE),count=1 \
 		--boot-disk-size 200GB \
 		--image-family ubuntu-1804-lts \
 		--image-project ubuntu-os-cloud \
@@ -29,7 +31,7 @@ create-instance-preemptible:
 		--zone $(ZONE) \
 		--network-interface address=$(ADDRESS) \
 		--metadata-from-file ssh-keys=$(SSH_KEY_PATH) \
-		--accelerator type=nvidia-tesla-t4,count=1 \
+		--accelerator type=$(GPU_TYPE),count=1 \
 		--boot-disk-size 200GB \
 		--machine-type $(MACHINE_TYPE) \
 		--image-family ubuntu-1804-lts \
