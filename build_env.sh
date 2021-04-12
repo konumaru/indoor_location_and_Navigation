@@ -21,6 +21,7 @@ sudo apt install -y build-essential \
     curl \
     llvm \
     xclip \
+    unzip \
     libncurses5-dev \
     libncursesw5-dev \
     xz-utils \
@@ -49,6 +50,6 @@ echo 'eval "$(pyenv init -)"' >> ~/.bashrc
 source ~/.bashrc
 
 # Install python with pyenv.
-pyenv install 3.9.0
+pyenv install 3.8.7
 wait
-pyenv global 3.9.0
+pyenv global 3.8.7
