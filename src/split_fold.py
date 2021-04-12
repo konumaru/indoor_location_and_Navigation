@@ -5,14 +5,14 @@ from sklearn.model_selection import KFold, train_test_split
 from utils.common import timer
 from utils.common import load_pickle, dump_pickle
 
-import config
+from config import Config as Config
 
 
 def main():
     # ids, (site, floor, path)
     wp = load_pickle("../data/preprocessing/train_waypoint.pkl")
 
-    cv = KFold(n_splits=5)
+    cv = KFold(n_splits=5, shuffle=True, random_state=Config.SEED)
     for n_fold, (train_idx, test_idx) in enumerate(cv.split(wp)):
         print(f"Fold {n_fold:>02}")
 

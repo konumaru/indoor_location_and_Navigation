@@ -135,7 +135,7 @@ def create_wifi_feature():
 
     bssid = np.concatenate(bssid, axis=0).astype("int32")
     np.save("../data/preprocessing/train_wifi_bssid.npy", bssid)
-
+    # TODO: rssi, freq にStandardScalerの処理を行う。BNで賄っていると思っていたが、batchによってnormalizeの差が激しいかもしれないと思い始めた。
     rssi = np.concatenate(rssi, axis=0)
     np.save("../data/preprocessing/train_wifi_rssi.npy", rssi)
 

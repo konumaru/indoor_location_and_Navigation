@@ -18,7 +18,7 @@ from utils.common import load_pickle
 from model import InddorModel, MeanPositionLoss
 
 
-DEBUG = True
+DEBUG = False
 
 if DEBUG:
     from config import DebugConfig as Config
@@ -89,6 +89,7 @@ class IndoorDataModule(pl.LightningDataModule):
             self.train_dataset,
             batch_size=self.batch_size,
             num_workers=8,
+            shuffle=True,
             drop_last=True,
         )
 
@@ -97,7 +98,7 @@ class IndoorDataModule(pl.LightningDataModule):
             self.valid_dataset,
             batch_size=self.batch_size,
             num_workers=8,
-            drop_last=False,
+            drop_last=True,
         )
 
     def test_dataloader(self):
@@ -119,26 +120,20 @@ def main():
         test_idx = np.load(f"../data/fold/fold{n_fold:>02}_test_idx.npy")
 
         # Define and setup datamodule.
-<<<<<<< HEAD
-        datamodule = IndoorDataModule(Config.BATCH_SIZE)
-        datamodule.setup(train_idx, valid_idx, test_idx)
-=======
-        datamodule = IndoorDataModule(config.BATCH_SIZE, train_idx, valid_idx, test_idx)
+        datamodule = IndoorDataModule(Config.BATCH_SIZE, train_idx, valid_idx, test_idx)
         datamodule.setup()
->>>>>>> c3707278bc78dce8a49d21c7d670c961e2c3337d
 
-        model = InddorModel(lr=1e-4)
+        model = InddorModel(lr=3e-4)
         checkpoint_callback = ModelCheckpoint(monitor="valid_loss")
         early_stop_callback = EarlyStopping(
             monitor="valid_loss",
-            min_delta=0.00,
+            min_delta=0.01,
             patience=20,
             verbose=False,
             mode="min",
         )
         tb_logger = TensorBoardLogger(save_dir="../tb_logs", name="Baseline")
 
-<<<<<<< HEAD
         # dataloader = datamodule.train_dataloader()
         # batch = next(iter(dataloader))
         # x, y = batch
@@ -159,29 +154,6 @@ def main():
         )
         trainer.fit(model=model, datamodule=datamodule)
         trainer.test(model=model, datamodule=datamodule)
-=======
-        dataloader = datamodule.train_dataloader()
-        batch = next(iter(dataloader))
-        x, y = batch
-        print(x)
-
-        model = InddorModel()
-        z = model(x)
-        print(z)
-        loss_fn = MeanPositionLoss()
-        loss = loss_fn(z, y)
-        print(loss)
-
-        # trainer = Trainer(
-        #     accelerator=None,  # "dp",
-        #     gpus=None,  # 1,
-        #     max_epochs=200,
-        #     callbacks=[checkpoint_callback, early_stop_callback],
-        #     logger=tb_logger,
-        # )
-        # trainer.fit(model=model, datamodule=datamodule)
-        # trainer.test(model=model, datamodule=datamodule)
->>>>>>> c3707278bc78dce8a49d21c7d670c961e2c3337d
         break
 
 
