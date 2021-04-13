@@ -4,6 +4,8 @@ import pandas as pd
 from rich.progress import track
 from joblib import Parallel, delayed
 
+from sklearn.preprocessing import StandardScaler
+
 from typing import List
 
 from utils.common import timer
@@ -68,7 +70,7 @@ def create_build_feature():
     np.save("../data/preprocessing/train_site_width.npy", site_width)
 
 
-@save_cache("../data/preprocessing/train_wifi_results.pkl", False)
+@save_cache("../data/preprocessing/train_wifi_results.pkl", True)
 def create_wifi():
     def get_wifi_feature(path_id, gdf):
         seq_len = 100
@@ -137,9 +139,15 @@ def create_wifi_feature():
     np.save("../data/preprocessing/train_wifi_bssid.npy", bssid)
     # TODO: rssi, freq にStandardScalerの処理を行う。BNで賄っていると思っていたが、batchによってnormalizeの差が激しいかもしれないと思い始めた。
     rssi = np.concatenate(rssi, axis=0)
+    scaler = StandardScaler()
+    rssi = scaler.fit_transform(rssi)
+    rssi = rssi.astype("float32")
     np.save("../data/preprocessing/train_wifi_rssi.npy", rssi)
 
     freq = np.concatenate(freq, axis=0)
+    scaler = StandardScaler()
+    freq = scaler.fit_transform(freq)
+    freq = freq.astype("float32")
     np.save("../data/preprocessing/train_wifi_freq.npy", freq)
 
 
