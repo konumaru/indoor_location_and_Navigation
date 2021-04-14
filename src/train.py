@@ -46,9 +46,9 @@ class IndoorDataset(Dataset):
         self.site_height = site_height[data_index].reshape(-1, 1)
         self.site_width = site_width[data_index].reshape(-1, 1)
 
-        self.wifi_bssid = wifi_bssid[data_index]
-        self.wifi_rssi = wifi_rssi[data_index]
-        self.wifi_freq = wifi_freq[data_index]
+        self.wifi_bssid = wifi_bssid[data_index][:, :20]
+        self.wifi_rssi = wifi_rssi[data_index][:, :20]
+        self.wifi_freq = wifi_freq[data_index][:, :20]
 
         self.wp = wp[data_index]
 

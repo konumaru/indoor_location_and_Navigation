@@ -27,7 +27,7 @@ class MeanPositionLoss(nn.Module):
 class WifiModel(nn.Module):
     def __init__(
         self,
-        seq_len: int = 100,
+        seq_len: int = 20,
         bssid_embed_dim: int = 32,
         output_dim: int = 64,
     ):
@@ -41,14 +41,13 @@ class WifiModel(nn.Module):
         # LSTM layers.
         self.n_dim_lstm = bssid_embed_dim + 2
         self.bn1 = nn.BatchNorm1d(self.n_dim_lstm)
-        self.lstm1 = nn.LSTM(100, 64, num_layers=2, dropout=0.5)
+        self.lstm1 = nn.LSTM(seq_len, 64, num_layers=2, dropout=0.5)
         self.lstm2 = nn.LSTM(64, 16)
 
         self.layers = nn.Sequential(
             nn.BatchNorm1d(self.n_dim_lstm * 16),
             nn.Linear(self.n_dim_lstm * 16, 512),
             nn.PReLU(),
-            # nn.BatchNorm1d(512),
             nn.Linear(512, output_dim),
             nn.PReLU(),
         )
@@ -114,12 +113,10 @@ class InddorModel(LightningModule):
             nn.ReLU(),
         )
         self.layer_floor = nn.Sequential(
-            nn.BatchNorm1d(64),
             nn.Linear(64, 13),
             nn.Softmax(dim=1),
         )
         self.layer_position = nn.Sequential(
-            nn.BatchNorm1d(64),
             nn.Linear(64, 2),
         )
 
