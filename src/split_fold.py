@@ -1,6 +1,6 @@
 import pathlib
 import numpy as np
-from sklearn.model_selection import KFold, train_test_split
+from sklearn.model_selection import train_test_split, KFold, GroupKFold
 
 from utils.common import timer
 from utils.common import load_pickle, dump_pickle
@@ -12,8 +12,8 @@ def main():
     # ids, (site, floor, path)
     wp = load_pickle("../data/preprocessing/train_waypoint.pkl")
 
-    cv = KFold(n_splits=5, shuffle=True, random_state=Config.SEED)
-    for n_fold, (train_idx, test_idx) in enumerate(cv.split(wp)):
+    cv = GroupKFold(n_splits=5)
+    for n_fold, (train_idx, test_idx) in enumerate(cv.split(wp, groups=wp["floor"])):
         print(f"Fold {n_fold:>02}")
 
         valid_idx, test_idx = train_test_split(test_idx, test_size=0.5)

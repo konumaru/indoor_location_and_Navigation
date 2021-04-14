@@ -33,7 +33,6 @@ class WifiModel(nn.Module):
         self.seq_len = seq_len
         self.bssid_embed_dim = bssid_embed_dim
         self.output_dim = output_dim
-        # Nunique of bssid is ___.
         self.embed_bssid = nn.Embedding(237452 + 1, bssid_embed_dim)
 
         # LSTM layers.

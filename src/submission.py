@@ -195,7 +195,7 @@ def main():
 
     # Load model and predict.
     model = InddorModel.load_from_checkpoint(
-        "../tb_logs/Baseline/version_4/checkpoints/epoch=48-step=12739.ckpt"
+        "../tb_logs/Baseline/version_6/checkpoints/epoch=7-step=1991.ckpt"
     )
     model.eval()
     model.freeze()
