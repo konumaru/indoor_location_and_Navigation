@@ -14,13 +14,11 @@ class MeanPositionLoss(nn.Module):
 
     def forward(self, y_hat, y):
         p = 15
-        diff_f = y_hat[0] - y[0]
-        diff_x = y_hat[1] - y[2]
-        diff_y = y_hat[1] - y[2]
+        diff_f = y_hat[:, 0] - y[:, 0]
+        diff_x = y_hat[:, 1] - y[:, 2]
+        diff_y = torch.abs(y_hat[:, 2] - y[:, 2])
 
-        error = torch.sqrt(diff_x * diff_x + diff_y * diff_y) + p * torch.sqrt(
-            diff_f * diff_f
-        )
+        error = torch.sqrt(diff_x ** 2 + diff_y ** 2) + p * diff_f
         return torch.mean(error)
 
 
@@ -162,13 +160,11 @@ class InddorModel(LightningModule):
 
     def _comp_metric(self, y_hat, y):
         p = 15
-        diff_f = y_hat[0] - y[0]
-        diff_x = y_hat[1] - y[2]
-        diff_y = y_hat[1] - y[2]
+        diff_f = y_hat[:, 0] - y[:, 0]
+        diff_x = y_hat[:, 1] - y[:, 2]
+        diff_y = y_hat[:, 2] - y[:, 2]
 
-        error = torch.sqrt(diff_x * diff_x + diff_y * diff_y) + p * torch.sqrt(
-            diff_f * diff_f
-        )
+        error = torch.sqrt(diff_x ** 2 + diff_y ** 2) + p * diff_f
         return torch.mean(error)
 
 
@@ -184,7 +180,7 @@ def main():
     site_height = torch.rand(size=(batch_size, 1))
     site_width = torch.rand(size=(batch_size, 1))
 
-    seq_len = 100
+    seq_len = 20
     wifi_bssid = torch.randint(100, size=(batch_size, seq_len))
     wifi_rssi = torch.rand(size=(batch_size, seq_len))
     wifi_freq = torch.rand(size=(batch_size, seq_len))

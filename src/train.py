@@ -123,7 +123,7 @@ def main():
         datamodule = IndoorDataModule(Config.BATCH_SIZE, train_idx, valid_idx, test_idx)
         datamodule.setup()
 
-        model = InddorModel(lr=3e-4)
+        model = InddorModel(lr=1e-3)
         checkpoint_callback = ModelCheckpoint(monitor="valid_loss")
         early_stop_callback = EarlyStopping(
             monitor="valid_loss",
