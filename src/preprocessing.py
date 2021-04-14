@@ -142,12 +142,14 @@ def create_wifi_feature():
     scaler = StandardScaler()
     rssi = scaler.fit_transform(rssi)
     rssi = rssi.astype("float32")
+    dump_pickle("../data/scaler/scaler_rssi.pkl", scaler)
     np.save("../data/preprocessing/train_wifi_rssi.npy", rssi)
 
     freq = np.concatenate(freq, axis=0)
     scaler = StandardScaler()
     freq = scaler.fit_transform(freq)
     freq = freq.astype("float32")
+    dump_pickle("../data/scaler/scaler_freq.pkl", scaler)
     np.save("../data/preprocessing/train_wifi_freq.npy", freq)
 
 

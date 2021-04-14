@@ -80,17 +80,14 @@ class BuildModel(nn.Module):
         self.embed_site = nn.Embedding(205, site_embed_dim)
 
         self.layers = nn.Sequential(
-            nn.Linear(site_embed_dim + 2, 16),
+            nn.Linear(site_embed_dim, 16),
             nn.PReLU(),
             nn.Linear(16, output_dim),
         )
 
     def forward(self, x):
-        site_id, site_height, site_width = x
-        x = self.embed_site(site_id)
+        x = self.embed_site(x)
         x = x.view(-1, self.site_embed_dim)
-
-        x = torch.cat((x, site_height, site_width), dim=1)
         x = self.layers(x)
         return x
 
@@ -162,7 +159,7 @@ class InddorModel(LightningModule):
         p = 15
         diff_f = y_hat[:, 0] - y[:, 0]
         diff_x = y_hat[:, 1] - y[:, 2]
-        diff_y = y_hat[:, 2] - y[:, 2]
+        diff_y = torch.abs(y_hat[:, 2] - y[:, 2])
 
         error = torch.sqrt(diff_x ** 2 + diff_y ** 2) + p * diff_f
         return torch.mean(error)
@@ -177,19 +174,17 @@ def main():
     waypoint = torch.rand(size=(batch_size, 2))
 
     site_id = torch.randint(100, size=(batch_size, 1))
-    site_height = torch.rand(size=(batch_size, 1))
-    site_width = torch.rand(size=(batch_size, 1))
 
     seq_len = 20
     wifi_bssid = torch.randint(100, size=(batch_size, seq_len))
     wifi_rssi = torch.rand(size=(batch_size, seq_len))
     wifi_freq = torch.rand(size=(batch_size, seq_len))
 
-    x = ((site_id, site_height, site_width), (wifi_bssid, wifi_rssi, wifi_freq))
+    x = (site_id, (wifi_bssid, wifi_rssi, wifi_freq))
     y = torch.cat((floor, waypoint), dim=1)
 
     # Test BuildModel
-    x_build = (site_id, site_height, site_width)
+    x_build = site_id
     model_build = BuildModel()
     output_build = model_build(x_build)
     print(output_build.shape)

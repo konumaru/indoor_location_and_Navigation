@@ -32,8 +32,6 @@ class IndoorDataset(Dataset):
         featfure_dir = pathlib.Path("../data/preprocessing/")
 
         site_id = np.load(featfure_dir / "train_site_id.npy")
-        site_height = np.load(featfure_dir / "train_site_height.npy")
-        site_width = np.load(featfure_dir / "train_site_width.npy")
 
         wifi_bssid = np.load(featfure_dir / "train_wifi_bssid.npy")
         wifi_rssi = np.load(featfure_dir / "train_wifi_rssi.npy")
@@ -43,8 +41,6 @@ class IndoorDataset(Dataset):
         wp = wp[["floor", "x", "y"]].to_numpy()
 
         self.site_id = site_id[data_index].reshape(-1, 1)
-        self.site_height = site_height[data_index].reshape(-1, 1)
-        self.site_width = site_width[data_index].reshape(-1, 1)
 
         self.wifi_bssid = wifi_bssid[data_index][:, :20]
         self.wifi_rssi = wifi_rssi[data_index][:, :20]
@@ -56,11 +52,7 @@ class IndoorDataset(Dataset):
         return len(self.site_id)
 
     def __getitem__(self, idx):
-        x_build = (
-            self.site_id[idx],
-            self.site_height[idx],
-            self.site_width[idx],
-        )
+        x_build = self.site_id[idx]
         x_wifi = (
             self.wifi_bssid[idx],
             self.wifi_rssi[idx],

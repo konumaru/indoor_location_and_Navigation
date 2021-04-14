@@ -230,6 +230,7 @@ class FeatureStore:
         path_id,
         input_path="../input/indoor-location-navigation/",
         save_path="../data/working",
+        is_test=False,
     ):
         self.site_id = site_id.strip()
         self.floor = floor.strip()
@@ -242,9 +243,11 @@ class FeatureStore:
         self.save_path = save_path
         Path(save_path).mkdir(parents=True, exist_ok=True)
 
-        self.site_info = SiteInfo(
-            site_id=self.site_id, floor=self.floor, input_path=self.input_path
-        )
+        if not is_test:
+            self.site_info = SiteInfo(
+                site_id=self.site_id, floor=self.floor, input_path=self.input_path
+            )
+        self.is_test = is_test
 
     def _flatten(self, l):
         return list(itertools.chain.from_iterable(l))
@@ -260,10 +263,13 @@ class FeatureStore:
         return [s[split_idx[i] : split_idx[i + 1]] for i in range(len(split_idx) - 1)]
 
     def load_df(self):
-        path = str(
-            Path(self.input_path)
-            / f"train/{self.site_id}/{self.floor}/{self.path_id}.txt"
-        )
+        if self.is_test:
+            path = str(Path(self.input_path) / f"test/{self.path_id}.txt")
+        else:
+            path = str(
+                Path(self.input_path)
+                / f"train/{self.site_id}/{self.floor}/{self.path_id}.txt"
+            )
         with open(path) as f:
             data = f.readlines()
 
@@ -318,7 +324,8 @@ class FeatureStore:
 
     def load_all_data(self, keep_raw=False):
         self.load_df()
-        self.get_site_info(keep_raw=keep_raw)
+        if not self.is_test:
+            self.get_site_info(keep_raw=keep_raw)
 
     def __getitem__(self, item):
         if item in self.df_types:
