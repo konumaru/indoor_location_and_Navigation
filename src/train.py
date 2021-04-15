@@ -47,6 +47,7 @@ class IndoorDataset(Dataset):
         self.wifi_freq = wifi_freq[data_index][:, :20]
 
         self.wp = wp[data_index]
+        self.wp[:, 0] += 3
 
     def __len__(self):
         return len(self.site_id)

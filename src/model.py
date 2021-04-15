@@ -15,7 +15,7 @@ class MeanPositionLoss(nn.Module):
     def forward(self, y_hat, y):
         p = 15
         diff_f = y_hat[:, 0] - y[:, 0]
-        diff_x = y_hat[:, 1] - y[:, 2]
+        diff_x = y_hat[:, 1] - y[:, 1]
         diff_y = torch.abs(y_hat[:, 2] - y[:, 2])
 
         error = torch.sqrt(diff_x ** 2 + diff_y ** 2) + p * diff_f
@@ -136,32 +136,22 @@ class InddorModel(LightningModule):
         x, y = batch
         z = self(x)
         loss = self.loss_fn(z, y)
-        metric = self._comp_metric(z, y)
-        return loss, metric
+        return loss
 
     def training_step(self, batch, batch_idx):
-        loss, metric = self.shared_step(batch)
+        loss = self.shared_step(batch)
         self.log("train_loss", loss)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        loss, metric = self.shared_step(batch)
+        loss = self.shared_step(batch)
         self.log("valid_loss", loss)
         return loss
 
     def test_step(self, batch, batch_idx):
-        loss, metric = self.shared_step(batch)
+        loss = self.shared_step(batch)
         self.log("test_loss", loss)
         return loss
-
-    def _comp_metric(self, y_hat, y):
-        p = 15
-        diff_f = y_hat[:, 0] - y[:, 0]
-        diff_x = y_hat[:, 1] - y[:, 2]
-        diff_y = torch.abs(y_hat[:, 2] - y[:, 2])
-
-        error = torch.sqrt(diff_x ** 2 + diff_y ** 2) + p * diff_f
-        return torch.mean(error)
 
 
 def main():
