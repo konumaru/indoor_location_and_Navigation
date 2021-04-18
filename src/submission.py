@@ -63,11 +63,11 @@ def create_test_build():
 
 @save_cache("../data/submit/test_wifi_results.pkl", True)
 def create_test_wifi():
-    def estimate_timestamp_gap(wifi: pd.DataFrame) -> int:
-        wifi_groups = wifi.groupby("timestamp")
+    def estimate_timestamp_gap(df: pd.DataFrame) -> int:
+        df_groups = df.groupby("timestamp")
         ts_gap = (
-            wifi_groups["last_seen_timestamp"].max().sort_index().astype(int)
-            - wifi_groups["timestamp"].max().sort_index().astype(int)
+            df_groups["last_seen_timestamp"].max().sort_index().astype(int)
+            - df_groups["timestamp"].max().sort_index().astype(int)
         ).max()
         return ts_gap
 
@@ -81,6 +81,9 @@ def create_test_wifi():
         feature = load_pickle(f"../data/submit/path_data/{path_id}.pkl", verbose=False)
         wifi = feature.wifi.copy()
         wifi["bssid"] = wifi["bssid"].map(bssid_map)
+
+        ts_gap = estimate_timestamp_gap(wifi.copy())
+        gdf["timestamp"] += ts_gap
 
         min_idx = gdf.index.min()
         max_idx = gdf.index.max()
@@ -134,6 +137,7 @@ def create_test_wifi():
         return bssid, rssi, freq, ts_diff
 
     waypoint = load_pickle("../data/submit/test_waypoint.pkl", verbose=False)
+    waypoint["timestamp"] = waypoint["timestamp"].astype("int64")
     bssid_map = load_pickle("../data/label_encode/map_bssid.pkl", verbose=False)
     results = Parallel(n_jobs=-1)(
         delayed(get_wifi_feature)(path_id, gdf)
@@ -225,7 +229,7 @@ def main():
 
     # Load model and predict.
     model = InddorModel.load_from_checkpoint(
-        "../tb_logs/Baseline/version_32/checkpoints/epoch=32-step=8579.ckpt"
+        "../tb_logs/Baseline/version_39/checkpoints/epoch=83-step=21839.ckpt"
     )
     model.eval()
     model.freeze()

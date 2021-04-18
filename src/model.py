@@ -36,10 +36,10 @@ class WifiModel(nn.Module):
         self.embed_bssid = nn.Embedding(237452 + 1, bssid_embed_dim)
 
         # LSTM layers.
-        n_dim_lstm = bssid_embed_dim + 3
+        n_dim_lstm = bssid_embed_dim + 2
         self.lstm_out_dim = 16
         self.lstm1 = nn.LSTM(n_dim_lstm, 128, num_layers=2, batch_first=True)
-        self.lstm2 = nn.LSTM(128, 16, batch_first=True)
+        self.lstm2 = nn.LSTM(128, self.lstm_out_dim, batch_first=True)
 
         self.layers = nn.Sequential(
             nn.BatchNorm1d(seq_len * self.lstm_out_dim),
@@ -55,8 +55,9 @@ class WifiModel(nn.Module):
         bssid_vec = self.embed_bssid(wifi_bssid)
         wifi_rssi = wifi_rssi.view(-1, self.seq_len, 1)
         wifi_freq = wifi_freq.view(-1, self.seq_len, 1)
-        wifi_ts_diff = wifi_ts_diff.view(-1, self.seq_len, 1)
-        x = torch.cat((bssid_vec, wifi_rssi, wifi_freq, wifi_ts_diff), dim=2)
+        # wifi_ts_diff = wifi_ts_diff.view(-1, self.seq_len, 1)
+        # x = torch.cat((bssid_vec, wifi_rssi, wifi_freq, wifi_ts_diff), dim=2)
+        x = torch.cat((bssid_vec, wifi_rssi, wifi_freq), dim=2)
 
         x, _ = self.lstm1(x)
         x, _ = self.lstm2(x)
@@ -70,43 +71,38 @@ class BuildModel(nn.Module):
     def __init__(
         self,
         site_embed_dim: int = 32,
-        output_dim: int = 16,
+        output_dim: int = 32,
     ):
         super(BuildModel, self).__init__()
         self.site_embed_dim = site_embed_dim
         self.output_dim = output_dim
         self.embed_site = nn.Embedding(205, site_embed_dim)
 
-        self.layers = nn.Sequential(
-            nn.Linear(site_embed_dim, 16),
-            nn.PReLU(),
-            nn.Linear(16, output_dim),
-        )
-
     def forward(self, x):
         x = self.embed_site(x)
         x = x.view(-1, self.site_embed_dim)
-        x = self.layers(x)
         return x
 
 
 class InddorModel(LightningModule):
     def __init__(self, lr: float = 1e-3):
         super(InddorModel, self).__init__()
+        self.lr = lr
+
         self.loss_fn = MeanPositionLoss()
         self.model_wifi = WifiModel()
         self.model_build = BuildModel()
 
-        output_dim = self.model_build.output_dim + self.model_wifi.output_dim
+        input_dim = self.model_build.output_dim + self.model_wifi.output_dim
 
         self.layers = nn.Sequential(
-            nn.Linear(output_dim, 256),
+            nn.Linear(input_dim, 256),
             nn.ReLU(),
             nn.Linear(256, 64),
             nn.ReLU(),
         )
         self.layer_floor = nn.Sequential(
-            nn.Linear(64, 13),
+            nn.Linear(64, 14),
             nn.Softmax(dim=1),
         )
         self.layer_position = nn.Sequential(
@@ -127,7 +123,7 @@ class InddorModel(LightningModule):
         return x
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-2)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.95)
         return [optimizer], [scheduler]
 
