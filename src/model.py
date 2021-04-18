@@ -14,9 +14,9 @@ class MeanPositionLoss(nn.Module):
 
     def forward(self, y_hat, y):
         p = 15
-        diff_f = y_hat[:, 0] - y[:, 0]
+        diff_f = torch.abs(y_hat[:, 0] - y[:, 0])
         diff_x = y_hat[:, 1] - y[:, 1]
-        diff_y = torch.abs(y_hat[:, 2] - y[:, 2])
+        diff_y = y_hat[:, 2] - y[:, 2]
 
         error = torch.sqrt(diff_x ** 2 + diff_y ** 2) + p * diff_f
         return torch.mean(error)
@@ -26,7 +26,7 @@ class WifiModel(nn.Module):
     def __init__(
         self,
         seq_len: int = 20,
-        bssid_embed_dim: int = 32,
+        bssid_embed_dim: int = 64,
         output_dim: int = 64,
     ):
         super(WifiModel, self).__init__()
@@ -34,34 +34,35 @@ class WifiModel(nn.Module):
         self.bssid_embed_dim = bssid_embed_dim
         self.output_dim = output_dim
         self.embed_bssid = nn.Embedding(237452 + 1, bssid_embed_dim)
+        self.bn1 = nn.BatchNorm1d(seq_len)
 
         # LSTM layers.
-        self.n_dim_lstm = bssid_embed_dim + 2
-        self.bn1 = nn.BatchNorm1d(self.n_dim_lstm)
-        self.lstm1 = nn.LSTM(seq_len, 64, num_layers=2, dropout=0.5)
-        self.lstm2 = nn.LSTM(64, 16)
+        n_dim_lstm = bssid_embed_dim + 3
+        self.lstm_out_dim = 16
+        self.lstm1 = nn.LSTM(n_dim_lstm, 64, batch_first=True)
+        self.lstm2 = nn.LSTM(64, 16, batch_first=True)
 
         self.layers = nn.Sequential(
-            nn.BatchNorm1d(self.n_dim_lstm * 16),
-            nn.Linear(self.n_dim_lstm * 16, 512),
+            nn.BatchNorm1d(seq_len * self.lstm_out_dim),
+            nn.Linear(seq_len * self.lstm_out_dim, 512),
             nn.PReLU(),
             nn.Linear(512, output_dim),
             nn.PReLU(),
         )
 
     def forward(self, x):
-        (wifi_bssid, wifi_rssi, wifi_freq) = x
+        (wifi_bssid, wifi_rssi, wifi_freq, wifi_ts_diff) = x
 
         bssid_vec = self.embed_bssid(wifi_bssid)
         wifi_rssi = wifi_rssi.view(-1, self.seq_len, 1)
         wifi_freq = wifi_freq.view(-1, self.seq_len, 1)
-        x = torch.cat((bssid_vec, wifi_rssi, wifi_freq), dim=2)
-        x = x.transpose(1, 2)
+        wifi_ts_diff = wifi_ts_diff.view(-1, self.seq_len, 1)
+        x = torch.cat((bssid_vec, wifi_rssi, wifi_freq, wifi_ts_diff), dim=2)
 
         x = self.bn1(x)
         x, _ = self.lstm1(x)
         x, _ = self.lstm2(x)
-        x = x.reshape(-1, self.n_dim_lstm * 16)
+        x = x.reshape(-1, self.seq_len * self.lstm_out_dim)
 
         x = self.layers(x)
         return x
@@ -168,8 +169,9 @@ def main():
     wifi_bssid = torch.randint(100, size=(batch_size, seq_len))
     wifi_rssi = torch.rand(size=(batch_size, seq_len))
     wifi_freq = torch.rand(size=(batch_size, seq_len))
+    wifi_ts_diff = torch.rand(size=(batch_size, seq_len))
 
-    x = (site_id, (wifi_bssid, wifi_rssi, wifi_freq))
+    x = (site_id, (wifi_bssid, wifi_rssi, wifi_freq, wifi_ts_diff))
     y = torch.cat((floor, waypoint), dim=1)
 
     # Test BuildModel
@@ -179,7 +181,7 @@ def main():
     print(output_build.shape)
 
     # Test WifiModel
-    x_wifi = (wifi_bssid, wifi_rssi, wifi_freq)
+    x_wifi = (wifi_bssid, wifi_rssi, wifi_freq, wifi_ts_diff)
     model = WifiModel()
     output_wifi = model(x_wifi)
     print(output_wifi.shape)

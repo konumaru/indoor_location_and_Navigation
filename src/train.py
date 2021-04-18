@@ -36,6 +36,7 @@ class IndoorDataset(Dataset):
         wifi_bssid = np.load(featfure_dir / "train_wifi_bssid.npy")
         wifi_rssi = np.load(featfure_dir / "train_wifi_rssi.npy")
         wifi_freq = np.load(featfure_dir / "train_wifi_freq.npy")
+        wifi_ts_diff = np.load(featfure_dir / "train_wifi_ts_diff.npy")
 
         wp = load_pickle(featfure_dir / "train_waypoint.pkl", verbose=False)
         wp = wp[["floor", "x", "y"]].to_numpy()
@@ -45,6 +46,7 @@ class IndoorDataset(Dataset):
         self.wifi_bssid = wifi_bssid[data_index][:, :20]
         self.wifi_rssi = wifi_rssi[data_index][:, :20]
         self.wifi_freq = wifi_freq[data_index][:, :20]
+        self.wifi_ts_diff = wifi_ts_diff[data_index][:, :20]
 
         self.wp = wp[data_index]
         self.wp[:, 0] += 3
@@ -58,6 +60,7 @@ class IndoorDataset(Dataset):
             self.wifi_bssid[idx],
             self.wifi_rssi[idx],
             self.wifi_freq[idx],
+            self.wifi_ts_diff[idx],
         )
         x = (x_build, x_wifi)
         y = self.wp[idx]

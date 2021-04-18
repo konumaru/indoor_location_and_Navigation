@@ -77,6 +77,7 @@ def create_wifi():
         bssid = []
         rssi = []
         freq = []
+        ts_diff = []
 
         feature = load_pickle(f"../data/working/{path_id}.pkl", verbose=False)
         wifi = feature.wifi.copy()
@@ -104,6 +105,9 @@ def create_wifi():
                 else (ts_wifi < ts_post_wp)
             )
             _wifi = _wifi[pre_flag & psot_flag]
+            _wifi["ts_diff_last_seen"] = (
+                _wifi["timestamp"] - _wifi["last_seen_timestamp"]
+            )
 
             _wifi = _wifi.sort_values(by="rssi", ascending=False)
             _wifi = _wifi.head(seq_len)
@@ -111,16 +115,21 @@ def create_wifi():
             _bssid = np.zeros(seq_len)
             _rssi = np.tile(-999, seq_len)
             _freq = np.tile(-999, seq_len)
+            _ts_diff = np.tile(-999, seq_len)
 
             _bssid[: len(_wifi)] = _wifi["bssid"].astype("int32").to_numpy()
             _rssi[: len(_wifi)] = _wifi["rssi"].astype("float32").to_numpy()
             _freq[: len(_wifi)] = _wifi["frequency"].astype("float32").to_numpy()
+            _ts_diff[: len(_wifi)] = (
+                _wifi["ts_diff_last_seen"].astype("float32").to_numpy()
+            )
 
             bssid.append(_bssid)
             rssi.append(_rssi)
             freq.append(_freq)
+            ts_diff.append(_ts_diff)
 
-        return bssid, rssi, freq
+        return bssid, rssi, freq, ts_diff
 
     waypoint = load_pickle("../data/preprocessing/train_waypoint.pkl", verbose=False)
     bssid_map = load_pickle("../data/label_encode/map_bssid.pkl", verbose=False)
@@ -133,7 +142,7 @@ def create_wifi():
 
 def create_wifi_feature():
     results = create_wifi()
-    bssid, rssi, freq = zip(*results)
+    bssid, rssi, freq, ts_diff = zip(*results)
 
     bssid = np.concatenate(bssid, axis=0).astype("int32")
     np.save("../data/preprocessing/train_wifi_bssid.npy", bssid)
@@ -151,6 +160,13 @@ def create_wifi_feature():
     freq = freq.astype("float32")
     dump_pickle("../data/scaler/scaler_freq.pkl", scaler)
     np.save("../data/preprocessing/train_wifi_freq.npy", freq)
+
+    ts_diff = np.concatenate(ts_diff, axis=0)
+    scaler = StandardScaler()
+    ts_diff = scaler.fit_transform(ts_diff)
+    ts_diff = ts_diff.astype("float32")
+    dump_pickle("../data/scaler/scaler_ts_diff.pkl", scaler)
+    np.save("../data/preprocessing/train_wifi_ts_diff.npy", ts_diff)
 
 
 def main():
