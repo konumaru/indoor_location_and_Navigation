@@ -17,7 +17,6 @@ UPDATE_RAW_DATA = False
 def extract_raw_data():
     src_dir = pathlib.Path("../data/raw/test/")
     filepaths = [path_filepath for path_filepath in src_dir.glob("*")]
-    print(str(src_dir))
 
     for filepath in track(filepaths):
         site_id = filepath.parent.parent.name
@@ -62,13 +61,22 @@ def create_test_build():
     return build
 
 
-@save_cache("../data/submit/test_wifi_results.pkl", True)
+@save_cache("../data/submit/test_wifi_results.pkl", False)
 def create_test_wifi():
+    def estimate_timestamp_gap(wifi: pd.DataFrame) -> int:
+        wifi_groups = wifi.groupby("timestamp")
+        ts_gap = (
+            wifi_groups["last_seen_timestamp"].max().sort_index().astype(int)
+            - wifi_groups["timestamp"].max().sort_index().astype(int)
+        ).max()
+        return ts_gap
+
     def get_wifi_feature(path_id, gdf):
         seq_len = 100
         bssid = []
         rssi = []
         freq = []
+        ts_diff = []
 
         feature = load_pickle(f"../data/submit/path_data/{path_id}.pkl", verbose=False)
         wifi = feature.wifi.copy()
@@ -83,6 +91,9 @@ def create_test_wifi():
             ts_post_wp = int(gdf.loc[i + 1, "timestamp"]) if (i + 1) < max_idx else None
 
             _wifi = wifi.copy()
+            # Fix timestamp with last_seen_timestamp of wifi.
+            ts_gap = estimate_timestamp_gap(_wifi.copy())
+            _wifi["timestamp"] = _wifi["timestamp"].astype(int) + ts_gap
             # NOTE: ターゲットとなるwaypointとその前後のwaypointの間にあるデータを取得する。
             ts_wifi = _wifi["timestamp"].values
             pre_flag = (
@@ -96,6 +107,9 @@ def create_test_wifi():
                 else (ts_wifi < ts_post_wp)
             )
             _wifi = _wifi[pre_flag & psot_flag]
+            _wifi["ts_diff_last_seen"] = (
+                _wifi["timestamp"] - _wifi["last_seen_timestamp"]
+            )
 
             _wifi = _wifi.sort_values(by="rssi", ascending=False)
             _wifi = _wifi.head(seq_len)
@@ -103,16 +117,21 @@ def create_test_wifi():
             _bssid = np.zeros(seq_len)
             _rssi = np.tile(-999, seq_len)
             _freq = np.tile(-999, seq_len)
+            _ts_diff = np.tile(-999, seq_len)
 
             _bssid[: len(_wifi)] = _wifi["bssid"].fillna(0).to_numpy()
             _rssi[: len(_wifi)] = _wifi["rssi"].fillna(-999).to_numpy()
             _freq[: len(_wifi)] = _wifi["frequency"].fillna(-999).to_numpy()
+            _ts_diff[: len(_wifi)] = (
+                _wifi["ts_diff_last_seen"].astype("float32").to_numpy()
+            )
 
             bssid.append(_bssid.astype("int32"))
             rssi.append(_rssi.astype("float32"))
             freq.append(_freq.astype("float32"))
+            ts_diff.append(_ts_diff.astype("float32"))
 
-        return bssid, rssi, freq
+        return bssid, rssi, freq, ts_diff
 
     waypoint = load_pickle("../data/submit/test_waypoint.pkl", verbose=False)
     bssid_map = load_pickle("../data/label_encode/map_bssid.pkl", verbose=False)
@@ -125,22 +144,30 @@ def create_test_wifi():
 
 def create_wifi_feature():
     results = create_test_wifi()
-    bssid, rssi, freq = zip(*results)
+    bssid, rssi, freq, ts_diff = zip(*results)
+
+    prefix = "../data/submit/test"
 
     bssid = np.concatenate(bssid, axis=0).astype("int32")
-    np.save("../data/submit/test_wifi_bssid.npy", bssid)
+    np.save(f"{prefix}_wifi_bssid.npy", bssid)
 
     scaler = load_pickle("../data/scaler/scaler_rssi.pkl")
     rssi = np.concatenate(rssi, axis=0)
     rssi = scaler.transform(rssi)
     rssi = rssi.astype("float32")
-    np.save("../data/submit/test_wifi_rssi.npy", rssi)
+    np.save(f"{prefix}_wifi_rssi.npy", rssi)
 
     scaler = load_pickle("../data/scaler/scaler_rssi.pkl")
     freq = np.concatenate(freq, axis=0)
     freq = scaler.transform(freq)
     freq = freq.astype("float32")
-    np.save("../data/submit/test_wifi_freq.npy", freq)
+    np.save(f"{prefix}_wifi_freq.npy", freq)
+
+    scaler = load_pickle("../data/scaler/scaler_ts_diff.pkl")
+    ts_diff = np.concatenate(ts_diff, axis=0)
+    ts_diff = scaler.transform(ts_diff)
+    ts_diff = ts_diff.astype("float32")
+    np.save(f"{prefix}_wifi_ts_diff.npy", ts_diff)
 
 
 class IndoorTestDataset(Dataset):
