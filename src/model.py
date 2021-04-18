@@ -36,7 +36,7 @@ class WifiModel(nn.Module):
         self.embed_bssid = nn.Embedding(237452 + 1, bssid_embed_dim)
 
         # LSTM layers.
-        n_dim_lstm = bssid_embed_dim + 2
+        n_dim_lstm = bssid_embed_dim + 3
         self.lstm_out_dim = 16
         self.lstm1 = nn.LSTM(n_dim_lstm, 128, num_layers=2, batch_first=True)
         self.lstm2 = nn.LSTM(128, 16, batch_first=True)

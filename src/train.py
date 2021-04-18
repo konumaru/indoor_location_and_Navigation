@@ -49,7 +49,6 @@ class IndoorDataset(Dataset):
         self.wifi_ts_diff = wifi_ts_diff[data_index][:, :20]
 
         self.wp = wp[data_index]
-        self.wp[:, 0] += 3
 
     def __len__(self):
         return len(self.site_id)

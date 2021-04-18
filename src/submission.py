@@ -61,7 +61,7 @@ def create_test_build():
     return build
 
 
-@save_cache("../data/submit/test_wifi_results.pkl", False)
+@save_cache("../data/submit/test_wifi_results.pkl", True)
 def create_test_wifi():
     def estimate_timestamp_gap(wifi: pd.DataFrame) -> int:
         wifi_groups = wifi.groupby("timestamp")
@@ -93,7 +93,7 @@ def create_test_wifi():
             _wifi = wifi.copy()
             # Fix timestamp with last_seen_timestamp of wifi.
             ts_gap = estimate_timestamp_gap(_wifi.copy())
-            _wifi["timestamp"] = _wifi["timestamp"].astype(int) + ts_gap
+            _wifi["timestamp"] += ts_gap
             # NOTE: ターゲットとなるwaypointとその前後のwaypointの間にあるデータを取得する。
             ts_wifi = _wifi["timestamp"].values
             pre_flag = (
@@ -180,12 +180,14 @@ class IndoorTestDataset(Dataset):
         wifi_bssid = np.load(featfure_dir / "test_wifi_bssid.npy")
         wifi_rssi = np.load(featfure_dir / "test_wifi_rssi.npy")
         wifi_freq = np.load(featfure_dir / "test_wifi_freq.npy")
+        wifi_ts_diff = np.load(featfure_dir / "test_wifi_ts_diff.npy")
 
         self.site_id = site_id.reshape(-1, 1)
 
         self.wifi_bssid = wifi_bssid[:, :20]
         self.wifi_rssi = wifi_rssi[:, :20]
         self.wifi_freq = wifi_freq[:, :20]
+        self.wifi_ts_diff = wifi_ts_diff[:, :20]
 
     def __len__(self):
         return len(self.site_id)
@@ -196,6 +198,7 @@ class IndoorTestDataset(Dataset):
             self.wifi_bssid[idx],
             self.wifi_rssi[idx],
             self.wifi_freq[idx],
+            self.wifi_ts_diff[idx],
         )
         x = (x_build, x_wifi)
         return x
@@ -215,14 +218,14 @@ def main():
     dataset = IndoorTestDataset()
     dataloader = DataLoader(
         dataset,
-        batch_size=256,
+        batch_size=512,
         num_workers=8,
         drop_last=False,
     )
 
     # Load model and predict.
     model = InddorModel.load_from_checkpoint(
-        "../tb_logs/Baseline/version_12/checkpoints/epoch=7-step=2079.ckpt"
+        "../tb_logs/Baseline/version_32/checkpoints/epoch=32-step=8579.ckpt"
     )
     model.eval()
     model.freeze()
