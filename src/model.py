@@ -34,7 +34,6 @@ class WifiModel(nn.Module):
         self.bssid_embed_dim = bssid_embed_dim
         self.output_dim = output_dim
         self.embed_bssid = nn.Embedding(237452 + 1, bssid_embed_dim)
-        self.bn1 = nn.BatchNorm1d(seq_len)
 
         # LSTM layers.
         n_dim_lstm = bssid_embed_dim + 3
@@ -59,7 +58,6 @@ class WifiModel(nn.Module):
         wifi_ts_diff = wifi_ts_diff.view(-1, self.seq_len, 1)
         x = torch.cat((bssid_vec, wifi_rssi, wifi_freq, wifi_ts_diff), dim=2)
 
-        x = self.bn1(x)
         x, _ = self.lstm1(x)
         x, _ = self.lstm2(x)
         x = x.reshape(-1, self.seq_len * self.lstm_out_dim)
