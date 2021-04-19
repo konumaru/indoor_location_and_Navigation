@@ -84,6 +84,7 @@ class IndoorDataModule(pl.LightningDataModule):
             self.train_dataset,
             batch_size=self.batch_size,
             num_workers=8,
+            pin_memory=True,
             shuffle=True,
             drop_last=True,
         )
@@ -93,6 +94,7 @@ class IndoorDataModule(pl.LightningDataModule):
             self.valid_dataset,
             batch_size=self.batch_size,
             num_workers=8,
+            pin_memory=True,
             drop_last=True,
         )
 
@@ -101,6 +103,7 @@ class IndoorDataModule(pl.LightningDataModule):
             self.test_dataset,
             batch_size=self.batch_size,
             num_workers=8,
+            pin_memory=True,
             drop_last=False,
         )
 

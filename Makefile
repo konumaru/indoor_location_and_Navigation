@@ -52,5 +52,6 @@ connect-instance:
 tb-server:
 	tensorboard --logdir ./tb_logs/
 
-test-mikasa:
-	poetry run pytest -s --pdb --cov=mikasa tests/
+test:
+	poetry run pytest -s --pdb tests/
+

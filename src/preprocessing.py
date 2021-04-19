@@ -12,9 +12,11 @@ from utils.common import timer
 from utils.common import load_pickle, dump_pickle, save_cache
 from utils.feature import FeatureStore
 
+# == waypoint ===
+
 
 @save_cache("../data/preprocessing/train_waypoint.pkl", True)
-def create_waypoint(filepaths: List):
+def create_waypoint():
     def get_waypoint_from_featureStore(filepath):
         path_id = filepath.name.split(".")[0]
 
@@ -28,6 +30,14 @@ def create_waypoint(filepaths: List):
         else:
             return pd.DataFrame([])
 
+    src_dir = pathlib.Path("../data/raw/train/")
+    filepaths = [
+        path_filepath
+        for site_filepath in src_dir.glob("*")
+        for floor_filepath in site_filepath.glob("*")
+        for path_filepath in floor_filepath.glob("*")
+    ]
+
     waypoint = Parallel(n_jobs=-1)(
         delayed(get_waypoint_from_featureStore)(filepath)
         for filepath in track(filepaths)
@@ -35,6 +45,9 @@ def create_waypoint(filepaths: List):
     waypoint = pd.concat(waypoint, axis=0).reset_index(drop=True)
     waypoint = waypoint.sort_values(by=["path", "timestamp"]).reset_index(drop=True)
     return waypoint
+
+
+# === build ===
 
 
 @save_cache("../data/preprocessing/train_build_results.pkl", True)
@@ -70,6 +83,9 @@ def create_build_feature():
     np.save("../data/preprocessing/train_site_width.npy", site_width)
 
 
+# ==== wifi ===
+
+
 @save_cache("../data/preprocessing/train_wifi_results.pkl", True)
 def create_wifi():
     def get_wifi_feature(path_id, gdf):
@@ -77,7 +93,6 @@ def create_wifi():
         bssid = []
         rssi = []
         freq = []
-        ts_diff = []
 
         feature = load_pickle(f"../data/working/{path_id}.pkl", verbose=False)
         wifi = feature.wifi.copy()
@@ -105,9 +120,6 @@ def create_wifi():
                 else (ts_wifi < ts_post_wp)
             )
             _wifi = _wifi[pre_flag & psot_flag]
-            _wifi["ts_diff_last_seen"] = (
-                _wifi["timestamp"] - _wifi["last_seen_timestamp"]
-            )
 
             _wifi = _wifi.sort_values(by="rssi", ascending=False)
             _wifi = _wifi.head(seq_len)
@@ -115,21 +127,16 @@ def create_wifi():
             _bssid = np.zeros(seq_len)
             _rssi = np.tile(-999, seq_len)
             _freq = np.tile(-999, seq_len)
-            _ts_diff = np.tile(-999, seq_len)
 
             _bssid[: len(_wifi)] = _wifi["bssid"].astype("int32").to_numpy()
             _rssi[: len(_wifi)] = _wifi["rssi"].astype("float32").to_numpy()
             _freq[: len(_wifi)] = _wifi["frequency"].astype("float32").to_numpy()
-            _ts_diff[: len(_wifi)] = (
-                _wifi["ts_diff_last_seen"].astype("float32").to_numpy()
-            )
 
             bssid.append(_bssid)
             rssi.append(_rssi)
             freq.append(_freq)
-            ts_diff.append(_ts_diff)
 
-        return bssid, rssi, freq, ts_diff
+        return bssid, rssi, freq
 
     waypoint = load_pickle("../data/preprocessing/train_waypoint.pkl", verbose=False)
     bssid_map = load_pickle("../data/label_encode/map_bssid.pkl", verbose=False)
@@ -142,7 +149,7 @@ def create_wifi():
 
 def create_wifi_feature():
     results = create_wifi()
-    bssid, rssi, freq, ts_diff = zip(*results)
+    bssid, rssi, freq = zip(*results)
 
     bssid = np.concatenate(bssid, axis=0).astype("int32")
     np.save("../data/preprocessing/train_wifi_bssid.npy", bssid)
@@ -161,31 +168,135 @@ def create_wifi_feature():
     dump_pickle("../data/scaler/scaler_freq.pkl", scaler)
     np.save("../data/preprocessing/train_wifi_freq.npy", freq)
 
-    ts_diff = np.concatenate(ts_diff, axis=0)
-    scaler = StandardScaler()
-    ts_diff = scaler.fit_transform(ts_diff)
-    ts_diff = ts_diff.astype("float32")
-    dump_pickle("../data/scaler/scaler_ts_diff.pkl", scaler)
-    np.save("../data/preprocessing/train_wifi_ts_diff.npy", ts_diff)
+
+# === beacon ===
+
+
+@save_cache("../data/preprocessing/train_beacon_results.pkl", False)
+def create_beacon():
+    def get_beacon_feature(path_id, gdf):
+        seq_len = 20
+        uuid = []
+        tx_power = []
+        rssi = []
+
+        feature = load_pickle(f"../data/working/{path_id}.pkl", verbose=False)
+        data = feature.beacon.copy()
+        data["uuid"] = data["uuid"].map(uuid_map)
+
+        min_idx = gdf.index.min()
+        max_idx = gdf.index.max()
+
+        for i, row in gdf.iterrows():
+            ts_pre_wp = gdf.loc[i - 1, "timestamp"] if i > min_idx else None
+            ts_current_wp = gdf.loc[i, "timestamp"]
+            ts_post_wp = gdf.loc[i + 1, "timestamp"] if (i + 1) < max_idx else None
+
+            _data = data.copy()
+            # NOTE: ターゲットとなるwaypointとその前後のwaypointの間にあるデータを取得する。
+            ts_data = _data["timestamp"].values
+            pre_flag = (
+                np.ones(len(ts_data)).astype(bool)
+                if ts_pre_wp == None
+                else (ts_pre_wp < ts_data)
+            )
+            psot_flag = (
+                np.ones(len(ts_data)).astype(bool)
+                if ts_post_wp == None
+                else (ts_data < ts_post_wp)
+            )
+
+            _data = _data[pre_flag & psot_flag]
+            _data = _data.sort_values(by="rssi", ascending=False)
+            _data = _data.head(seq_len)
+
+            _uuid = np.zeros(seq_len)
+            _tx_power = np.tile(-999, seq_len)
+            _rssi = np.tile(-999, seq_len)
+
+            _uuid[: len(_data)] = _data["uuid"].fillna(0).astype("int32").to_numpy()
+            _tx_power[: len(_data)] = (
+                _data["tx_power"].fillna(-999).astype("float32").to_numpy()
+            )
+            _rssi[: len(_data)] = (
+                _data["rssi"].fillna(-999).astype("float32").to_numpy()
+            )
+
+            uuid.append(_uuid)
+            tx_power.append(_tx_power)
+            rssi.append(_rssi)
+
+        return uuid, tx_power, rssi
+
+    waypoint = load_pickle("../data/preprocessing/train_waypoint.pkl", verbose=False)
+    uuid_map = load_pickle("../data/label_encode/map_beacon_uuid.pkl", verbose=False)
+    results = Parallel(n_jobs=-1)(
+        delayed(get_beacon_feature)(path_id, gdf)
+        for path_id, gdf in track(waypoint.groupby("path"))
+    )
+    return results
+
+
+def create_beacon_feature():
+    results = create_beacon()
+    uuid, tx_power, rssi = zip(*results)
+
+    def save_scaler_and_npy(data: np.ndarray, name: str):
+        scaler = StandardScaler()
+        data = scaler.fit_transform(data)
+        data = data.astype("float32")
+        dump_pickle(f"../data/scaler/scaler_{name}.pkl", scaler)
+        np.save(f"../data/preprocessing/train_{name}.npy", data)
+
+    uuid = np.concatenate(uuid, axis=0)
+    tx_power = np.concatenate(tx_power, axis=0)
+    rssi = np.concatenate(rssi, axis=0)
+
+    save_scaler_and_npy(uuid, "beacon_uuid")
+    save_scaler_and_npy(tx_power, "beacon_tx_power")
+    save_scaler_and_npy(rssi, "beacon_rssi")
+
+
+# === accelerometer
+
+
+def create_accelerometer_feature():
+    return None
+
+
+# === gyroscope ===
+
+
+def create_gyroscope_feature():
+    return None
+
+
+# === magnetic_field ===
+
+
+def create_magnetic_feild_feature():
+    return None
+
+
+# === rotation_vector ===
+
+
+def create_rotation_vector_feature():
+    return None
 
 
 def main():
-    src_dir = pathlib.Path("../data/raw/train/")
-    filepaths = [
-        path_filepath
-        for site_filepath in src_dir.glob("*")
-        for floor_filepath in site_filepath.glob("*")
-        for path_filepath in floor_filepath.glob("*")
-    ]
-
     print("\nCreate waypoint ...")
-    _ = create_waypoint(filepaths)
+    _ = create_waypoint()
 
     print("\nCreate build ...")
     _ = create_build_feature()
 
     print("\nCreate wifi ...")
     _ = create_wifi_feature()
+
+    print("\nCreate beacon ...")
+    _ = create_beacon_feature()
 
 
 if __name__ == "__main__":

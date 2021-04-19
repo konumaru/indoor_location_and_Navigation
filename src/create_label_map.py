@@ -32,7 +32,7 @@ def create_site_map(filepaths: List):
     return siteId_map
 
 
-@save_cache("../data/label_encode/map_bssid.pkl", False)
+@save_cache("../data/label_encode/map_bssid.pkl", True)
 def create_bssid_map(filepaths: List):
     def get_bssid_from_featureStore(filepath):
         site_id = filepath.parent.parent.name
@@ -56,6 +56,30 @@ def create_bssid_map(filepaths: List):
     return bssid_map
 
 
+@save_cache("../data/label_encode/map_beacon_uuid.pkl", True)
+def create_beacon_uuid_map(filepaths: List):
+    def get_beacon_uuid_from_feature_store(filepath):
+        path_id = filepath.name.split(".")[0]
+
+        feature = load_pickle(f"../data/working/{path_id}.pkl", verbose=False)
+        uniques = feature.beacon.uuid.unique()
+        if len(uniques) > 0:
+            return uniques
+        else:
+            return np.array([])
+
+    uuid = Parallel(n_jobs=-1)(
+        delayed(get_beacon_uuid_from_feature_store)(filepath)
+        for filepath in track(filepaths)
+    )
+
+    uuid = np.concatenate(uuid, axis=0)
+    unique_uuid = np.unique(uuid)
+
+    uuid_map = {_uuid: i + 1 for i, _uuid in enumerate(unique_uuid)}
+    return uuid_map
+
+
 def main():
     src_dir = pathlib.Path("../data/raw/train/")
     filepaths = [
@@ -67,6 +91,7 @@ def main():
 
     _ = create_site_map(filepaths)
     _ = create_bssid_map(filepaths)
+    _ = create_beacon_uuid_map(filepaths)
 
 
 if __name__ == "__main__":
