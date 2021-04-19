@@ -12,7 +12,7 @@ def main():
     # ids, (site, floor, path)
     wp = load_pickle("../data/preprocessing/train_waypoint.pkl")
 
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=Config.SEED)
+    cv = StratifiedKFold(n_splits=10, shuffle=True, random_state=Config.SEED)
     for n_fold, (train_idx, test_idx) in enumerate(cv.split(X=wp, y=wp["path"])):
         print(f"Fold {n_fold:>02}")
 

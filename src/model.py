@@ -70,12 +70,11 @@ class WifiModel(nn.Module):
 class BuildModel(nn.Module):
     def __init__(
         self,
-        site_embed_dim: int = 32,
-        output_dim: int = 32,
+        site_embed_dim: int = 64,
     ):
         super(BuildModel, self).__init__()
         self.site_embed_dim = site_embed_dim
-        self.output_dim = output_dim
+        self.output_dim = site_embed_dim
         self.embed_site = nn.Embedding(205, site_embed_dim)
 
     def forward(self, x):
