@@ -1,5 +1,8 @@
 import pathlib
 import numpy as np
+import matplotlib.pyplot as plt
+
+plt.style.use("seaborn-darkgrid")
 
 import torch
 from torch import nn
@@ -8,14 +11,11 @@ from torch.utils.data import Dataset, DataLoader
 
 import pytorch_lightning as pl
 from pytorch_lightning import Trainer
-from pytorch_lightning.callbacks import ModelCheckpoint
-from pytorch_lightning.loggers import TensorBoardLogger
-from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
 from utils.common import timer
 from utils.common import load_pickle
 
-from model import InddorModel, MeanPositionLoss
+from models import InddorModel, MeanPositionLoss
 
 
 DEBUG = False
@@ -31,24 +31,34 @@ class IndoorDataset(Dataset):
         # Load features.
         featfure_dir = pathlib.Path("../data/preprocessing/")
 
-        site_id = np.load(featfure_dir / "train_site_id.npy")
-
-        wifi_bssid = np.load(featfure_dir / "train_wifi_bssid.npy")
-        wifi_rssi = np.load(featfure_dir / "train_wifi_rssi.npy")
-        wifi_freq = np.load(featfure_dir / "train_wifi_freq.npy")
-        wifi_ts_diff = np.load(featfure_dir / "train_wifi_ts_diff.npy")
-
+        # Target, waypoint
         wp = load_pickle(featfure_dir / "train_waypoint.pkl", verbose=False)
         wp = wp[["floor", "x", "y"]].to_numpy()
 
+        self.wp = wp[data_index]
+
+        # Build feature.
+        site_id = np.load(featfure_dir / "train_site_id.npy")
+
         self.site_id = site_id[data_index].reshape(-1, 1)
+
+        # Wifi features.
+        wifi_bssid = np.load(featfure_dir / "train_wifi_bssid.npy")
+        wifi_rssi = np.load(featfure_dir / "train_wifi_rssi.npy")
+        wifi_freq = np.load(featfure_dir / "train_wifi_freq.npy")
 
         self.wifi_bssid = wifi_bssid[data_index][:, :20]
         self.wifi_rssi = wifi_rssi[data_index][:, :20]
         self.wifi_freq = wifi_freq[data_index][:, :20]
-        self.wifi_ts_diff = wifi_ts_diff[data_index][:, :20]
 
-        self.wp = wp[data_index]
+        # Beacon featurees.
+        beacon_uuid = np.load(featfure_dir / "train_beacon_uuid.npy")
+        beacon_tx_power = np.load(featfure_dir / "train_beacon_tx_power.npy")
+        beacon_rssi = np.load(featfure_dir / "train_beacon_rssi.npy")
+
+        self.beacon_uuid = beacon_uuid[data_index]
+        self.beacon_tx_power = beacon_tx_power[data_index]
+        self.beacon_rssi = beacon_rssi[data_index]
 
     def __len__(self):
         return len(self.site_id)
@@ -59,9 +69,14 @@ class IndoorDataset(Dataset):
             self.wifi_bssid[idx],
             self.wifi_rssi[idx],
             self.wifi_freq[idx],
-            self.wifi_ts_diff[idx],
         )
-        x = (x_build, x_wifi)
+        x_beacon = (
+            self.beacon_uuid[idx],
+            self.beacon_tx_power[idx],
+            self.beacon_rssi[idx],
+        )
+
+        x = (x_build, x_wifi, x_beacon)
         y = self.wp[idx]
         return x, y
 
@@ -121,37 +136,18 @@ def main():
         datamodule = IndoorDataModule(Config.BATCH_SIZE, train_idx, valid_idx, test_idx)
         datamodule.setup()
 
-        model = InddorModel(lr=1e-3)
-        checkpoint_callback = ModelCheckpoint(monitor="valid_loss")
-        early_stop_callback = EarlyStopping(
-            monitor="valid_loss",
-            min_delta=0.01,
-            patience=20,
-            verbose=False,
-            mode="min",
-        )
-        tb_logger = TensorBoardLogger(save_dir="../tb_logs", name="Baseline")
-
-        # dataloader = datamodule.train_dataloader()
-        # batch = next(iter(dataloader))
-        # x, y = batch
-
-        # model = InddorModel()
-        # z = model(x)
-        # print(z)
-        # loss_fn = MeanPositionLoss()
-        # loss = loss_fn(z, y)
-        # print(loss)
-
+        model = InddorModel(lr=1e-2)
         trainer = Trainer(
             accelerator=Config.accelerator,
             gpus=Config.gpus,
             max_epochs=Config.NUM_EPOCH,
-            callbacks=[checkpoint_callback, early_stop_callback],
-            logger=tb_logger,
+            callbacks=Config.callbacks,
+            logger=Config.logger,
+            fast_dev_run=Config.DEV_RUN,
         )
         trainer.fit(model=model, datamodule=datamodule)
         trainer.test(model=model, datamodule=datamodule)
+
         break
 
 

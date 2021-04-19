@@ -1,4 +1,7 @@
 import numpy as np
+import matplotlib.pyplot as plt
+
+plt.style.use("seaborn-darkgrid")
 
 import torch
 import torch.nn as nn
@@ -51,8 +54,8 @@ class WifiModel(nn.Module):
         self.seq_len = seq_len
         self.bssid_embed_dim = bssid_embed_dim
         self.output_dim = output_dim
-        self.embed_bssid = nn.Embedding(237452 + 1, bssid_embed_dim)
 
+        self.embed_bssid = nn.Embedding(237452 + 1, bssid_embed_dim)
         # LSTM layers.
         n_dim_lstm = bssid_embed_dim + 2
         self.lstm_out_dim = 16
@@ -94,7 +97,7 @@ class BeaconModel(nn.Module):
         self.seq_len = seq_len
         self.output_dim = output_dim
 
-        self.embed_uuid = nn.Embedding(662, uuid_embed_dim)
+        self.embed_uuid = nn.Embedding(662 + 1, uuid_embed_dim)
         # LSTM layers.
         n_dim_lstm = uuid_embed_dim + 2
         self.lstm_out_dim = 16
@@ -171,26 +174,74 @@ class InddorModel(LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
-        scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.95)
-        return [optimizer], [scheduler]
+        lr_scheduler = {
+            "scheduler": torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.995),
+            "name": "lr",
+        }
+        return [optimizer], [lr_scheduler]
 
     def shared_step(self, batch):
         x, y = batch
         z = self(x)
         loss = self.loss_fn(z, y)
-        return loss
+        return z, loss
 
     def training_step(self, batch, batch_idx):
-        loss = self.shared_step(batch)
+        _, loss = self.shared_step(batch)
         self.log("train_loss", loss)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        loss = self.shared_step(batch)
+        _, loss = self.shared_step(batch)
         self.log("valid_loss", loss)
         return loss
 
     def test_step(self, batch, batch_idx):
-        loss = self.shared_step(batch)
+        x, y = batch
+        z, loss = self.shared_step(batch)
         self.log("test_loss", loss)
-        return loss
+
+        outputs = {
+            "test_loss": loss,
+            "actual": y.detach().cpu().numpy(),
+            "pred": z.detach().cpu().numpy(),
+        }
+        return outputs
+
+    def test_epoch_end(self, test_outputs):
+        preds = []
+        actuals = []
+
+        for output in test_outputs:
+            preds.append(output["pred"])
+            actuals.append(output["actual"])
+
+        pred = np.concatenate(preds, axis=0)
+        actual = np.concatenate(actuals, axis=0)
+
+        figure = self.floor_bar_plot(actual[:, 0], pred[:, 0])
+        # https://pytorch-lightning.readthedocs.io/en/latest/common/loggers.html#tensorboard
+        self.logger.experiment.add_figure("floor_cnt", figure, 0)
+
+    def floor_bar_plot(self, floor, floor_hat):
+        idx_all = np.arange(14) - 3
+        idx, cnt = np.unique(floor, return_counts=True)
+        idx_hat, cnt_hat = np.unique(floor_hat, return_counts=True)
+
+        width = 0.35
+        fig, ax = plt.subplots()
+        rects1 = ax.bar(idx - width / 2, cnt, width, label="Predict")
+        rects2 = ax.bar(idx_hat + width / 2, cnt_hat, width, label="Actual")
+
+        # Add some text for labels, title and custom x-axis tick labels, etc.
+        ax.set_ylabel("Record Count")
+        ax.set_title("Floor Count")
+        ax.set_xticks(idx_all)
+        ax.set_xticklabels(idx_all)
+        ax.legend()
+
+        ax.bar_label(rects1, padding=3)
+        ax.bar_label(rects2, padding=3)
+
+        fig.tight_layout()
+        return fig

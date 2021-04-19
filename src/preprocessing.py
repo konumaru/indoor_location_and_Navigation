@@ -246,7 +246,7 @@ def create_beacon_feature():
         dump_pickle(f"../data/scaler/scaler_{name}.pkl", scaler)
         np.save(f"../data/preprocessing/train_{name}.npy", data)
 
-    uuid = np.concatenate(uuid, axis=0)
+    uuid = np.concatenate(uuid, axis=0).astype("int32")
     tx_power = np.concatenate(tx_power, axis=0)
     rssi = np.concatenate(rssi, axis=0)
 
