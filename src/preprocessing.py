@@ -151,28 +151,26 @@ def create_wifi_feature():
     results = create_wifi()
     bssid, rssi, freq = zip(*results)
 
-    bssid = np.concatenate(bssid, axis=0).astype("int32")
-    np.save("../data/preprocessing/train_wifi_bssid.npy", bssid)
-    # TODO: rssi, freq にStandardScalerの処理を行う。BNで賄っていると思っていたが、batchによってnormalizeの差が激しいかもしれないと思い始めた。
-    rssi = np.concatenate(rssi, axis=0)
-    scaler = StandardScaler()
-    rssi = scaler.fit_transform(rssi)
-    rssi = rssi.astype("float32")
-    dump_pickle("../data/scaler/scaler_rssi.pkl", scaler)
-    np.save("../data/preprocessing/train_wifi_rssi.npy", rssi)
+    def save_scaler_and_npy(data: np.ndarray, name: str):
+        scaler = StandardScaler()
+        data = scaler.fit_transform(data)
+        data = data.astype("float32")
+        dump_pickle(f"../data/scaler/scaler_{name}.pkl", scaler)
+        np.save(f"../data/preprocessing/train_{name}.npy", data)
 
+    bssid = np.concatenate(bssid, axis=0).astype("int32")
+    rssi = np.concatenate(rssi, axis=0)
     freq = np.concatenate(freq, axis=0)
-    scaler = StandardScaler()
-    freq = scaler.fit_transform(freq)
-    freq = freq.astype("float32")
-    dump_pickle("../data/scaler/scaler_freq.pkl", scaler)
-    np.save("../data/preprocessing/train_wifi_freq.npy", freq)
+
+    np.save("../data/preprocessing/train_wifi_bssid.npy", bssid)
+    save_scaler_and_npy(rssi, "wifi_rssi")
+    save_scaler_and_npy(freq, "wifi_freq")
 
 
 # === beacon ===
 
 
-@save_cache("../data/preprocessing/train_beacon_results.pkl", False)
+@save_cache("../data/preprocessing/train_beacon_results.pkl", True)
 def create_beacon():
     def get_beacon_feature(path_id, gdf):
         seq_len = 20
@@ -252,7 +250,7 @@ def create_beacon_feature():
     tx_power = np.concatenate(tx_power, axis=0)
     rssi = np.concatenate(rssi, axis=0)
 
-    save_scaler_and_npy(uuid, "beacon_uuid")
+    np.save("../data/preprocessing/train_beacon_uuid.npy", uuid)
     save_scaler_and_npy(tx_power, "beacon_tx_power")
     save_scaler_and_npy(rssi, "beacon_rssi")
 

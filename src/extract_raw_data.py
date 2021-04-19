@@ -8,8 +8,6 @@ from rich.progress import track
 
 from typing import Dict
 
-import config
-
 from utils.common import timer
 from utils.common import load_pickle, dump_pickle, save_cache
 from utils.feature import FeatureStore
