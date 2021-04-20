@@ -105,6 +105,7 @@ def create_beacon_feature():
     tx_power = np.concatenate(tx_power, axis=0)
     rssi = np.concatenate(rssi, axis=0)
 
+    np.save(f"../data/submit/test_beacon_uuid.npy", uuid)
     transform_by_scaler_and_save_npy(tx_power, "beacon_tx_power")
     transform_by_scaler_and_save_npy(rssi, "beacon_rssi")
 
@@ -114,19 +115,27 @@ class IndoorTestDataset(Dataset):
         # Load features.
         featfure_dir = pathlib.Path("../data/submit/")
 
+        # Build feature.
         site_id = np.load(featfure_dir / "test_site_id.npy")
+        self.site_id = site_id.reshape(-1, 1)
 
+        # Wifi features.
         wifi_bssid = np.load(featfure_dir / "test_wifi_bssid.npy")
         wifi_rssi = np.load(featfure_dir / "test_wifi_rssi.npy")
         wifi_freq = np.load(featfure_dir / "test_wifi_freq.npy")
-        wifi_ts_diff = np.load(featfure_dir / "test_wifi_ts_diff.npy")
-
-        self.site_id = site_id.reshape(-1, 1)
 
         self.wifi_bssid = wifi_bssid[:, :20]
         self.wifi_rssi = wifi_rssi[:, :20]
         self.wifi_freq = wifi_freq[:, :20]
-        self.wifi_ts_diff = wifi_ts_diff[:, :20]
+
+        # Beacon featurees.
+        beacon_uuid = np.load(featfure_dir / "test_beacon_uuid.npy")
+        beacon_tx_power = np.load(featfure_dir / "test_beacon_tx_power.npy")
+        beacon_rssi = np.load(featfure_dir / "test_beacon_rssi.npy")
+
+        self.beacon_uuid = beacon_uuid
+        self.beacon_tx_power = beacon_tx_power
+        self.beacon_rssi = beacon_rssi
 
     def __len__(self):
         return len(self.site_id)
@@ -137,9 +146,13 @@ class IndoorTestDataset(Dataset):
             self.wifi_bssid[idx],
             self.wifi_rssi[idx],
             self.wifi_freq[idx],
-            self.wifi_ts_diff[idx],
         )
-        x = (x_build, x_wifi)
+        x_beacon = (
+            self.beacon_uuid[idx],
+            self.beacon_tx_power[idx],
+            self.beacon_rssi[idx],
+        )
+        x = (x_build, x_wifi, x_beacon)
         return x
 
 
@@ -165,7 +178,7 @@ def main():
 
     # Load model and predict.
     model = InddorModel.load_from_checkpoint(
-        "../tb_logs/Baseline/version_45/checkpoints/epoch=118-step=34866.ckpt"
+        "../tb_logs/Change-LossFunction-RMSE/version_9/checkpoints/epoch=61-step=16119.ckpt"
     )
     model.eval()
     model.freeze()
@@ -181,7 +194,7 @@ def main():
 
     # Dump submission file.
     submission = pd.read_csv("../data/raw/sample_submission.csv")
-    submission.iloc[:, 1:] = pred
+    submission.iloc[:, 2:] = pred
     print(submission.head())
 
     submission["floor"] = submission["floor"].astype(int)
