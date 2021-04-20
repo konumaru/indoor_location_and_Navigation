@@ -143,10 +143,9 @@ class InddorModel(LightningModule):
     def __init__(self, lr: float = 1e-3):
         super(InddorModel, self).__init__()
         self.lr = lr
-
-        # self.loss_fn = MeanPositionLoss()
-        self.loss_fn = RMSELoss()
-
+        # Define loss function.
+        self.loss_fn = RMSELoss()  # MeanPositionLoss()
+        # Each data models.
         self.model_build = BuildModel()
         self.model_wifi = WifiModel()
         self.model_beacon = BeaconModel()
@@ -169,6 +168,7 @@ class InddorModel(LightningModule):
 
     def forward(self, x):
         x_build, x_wifi, x_beacon = x
+
         x_build = self.model_build(x_build)
         x_wifi = self.model_wifi(x_wifi)
         x_beacon = self.model_beacon(x_beacon)
@@ -211,23 +211,32 @@ class InddorModel(LightningModule):
             "test_loss": loss,
             "floor": y[0].detach().cpu().numpy(),
             "floor_hat": y[0].detach().cpu().numpy(),
+            "position": y[1].detach().cpu().numpy(),
+            "position_hat": z.detach().cpu().numpy(),
         }
         return outputs
 
     def test_epoch_end(self, test_outputs):
-        preds = []
-        actuals = []
+        floor = np.concatenate([output["floor"] for output in test_outputs], axis=0)
+        floor_hat = np.concatenate(
+            [output["floor_hat"] for output in test_outputs], axis=0
+        )
+        position = np.concatenate(
+            [output["position"] for output in test_outputs], axis=0
+        )
+        position_hat = np.concatenate(
+            [output["position_hat"] for output in test_outputs], axis=0
+        )
 
-        for output in test_outputs:
-            actuals.append(output["floor"])
-            preds.append(output["floor_hat"])
-
-        pred = np.concatenate(preds, axis=0)
-        actual = np.concatenate(actuals, axis=0)
-
-        figure = self.floor_bar_plot(actual, pred)
+        # Save plot of floor count.
         # https://pytorch-lightning.readthedocs.io/en/latest/common/loggers.html#tensorboard
+        figure = self.floor_bar_plot(floor, floor_hat)
         self.logger.experiment.add_figure("floor_cnt", figure, 0)
+        # Save plot of position distribution.
+        self.logger.experiment.add_histogram("x", position[:, 0], 0)
+        self.logger.experiment.add_histogram("x_hat", position_hat[:, 0], 0)
+        self.logger.experiment.add_histogram("y", position[:, 1], 0)
+        self.logger.experiment.add_histogram("y_hat", position_hat[:, 1], 0)
 
     def floor_bar_plot(self, floor, floor_hat):
         idx_all = np.arange(14) - 3

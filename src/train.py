@@ -127,7 +127,6 @@ def main():
     pl.seed_everything(Config.SEED)
 
     for n_fold in range(Config.NUM_FOLD):
-        n_fold += 1
         # Load index and select fold daata.
         train_idx = np.load(f"../data/fold/fold{n_fold:>02}_train_idx.npy")
         valid_idx = np.load(f"../data/fold/fold{n_fold:>02}_valid_idx.npy")
