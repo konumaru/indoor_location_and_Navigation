@@ -17,7 +17,6 @@ from utils.common import load_pickle
 
 from models import InddorModel, MeanPositionLoss
 
-
 DEBUG = False
 
 if DEBUG:
@@ -33,9 +32,10 @@ class IndoorDataset(Dataset):
 
         # Target, waypoint
         wp = load_pickle(featfure_dir / "train_waypoint.pkl", verbose=False)
-        wp = wp[["floor", "x", "y"]].to_numpy()
-
-        self.wp = wp[data_index]
+        floor = wp[["floor"]].to_numpy().astype("int32")
+        position = wp[["x", "y"]].to_numpy().astype("float32")
+        self.floor = floor[data_index]
+        self.position = position[data_index]
 
         # Build feature.
         site_id = np.load(featfure_dir / "train_site_id.npy")
@@ -77,7 +77,7 @@ class IndoorDataset(Dataset):
         )
 
         x = (x_build, x_wifi, x_beacon)
-        y = self.wp[idx]
+        y = (self.floor[idx], self.position[idx])
         return x, y
 
 
@@ -127,6 +127,7 @@ def main():
     pl.seed_everything(Config.SEED)
 
     for n_fold in range(Config.NUM_FOLD):
+        n_fold += 1
         # Load index and select fold daata.
         train_idx = np.load(f"../data/fold/fold{n_fold:>02}_train_idx.npy")
         valid_idx = np.load(f"../data/fold/fold{n_fold:>02}_valid_idx.npy")

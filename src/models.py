@@ -26,6 +26,17 @@ class MeanPositionLoss(nn.Module):
         return torch.mean(error)
 
 
+class RMSELoss(nn.Module):
+    def __init__(self):
+        super(RMSELoss, self).__init__()
+
+    def forward(self, y_hat, y):
+        diff_x = y_hat[:, 0] - y[:, 0]
+        diff_y = y_hat[:, 1] - y[:, 1]
+        error = torch.sqrt(diff_x ** 2 + diff_y ** 2)
+        return torch.mean(error)
+
+
 class BuildModel(nn.Module):
     def __init__(
         self,
@@ -133,7 +144,8 @@ class InddorModel(LightningModule):
         super(InddorModel, self).__init__()
         self.lr = lr
 
-        self.loss_fn = MeanPositionLoss()
+        # self.loss_fn = MeanPositionLoss()
+        self.loss_fn = RMSELoss()
 
         self.model_build = BuildModel()
         self.model_wifi = WifiModel()
@@ -151,10 +163,6 @@ class InddorModel(LightningModule):
             nn.Linear(256, 64),
             nn.ReLU(),
         )
-        self.layer_floor = nn.Sequential(
-            nn.Linear(64, 14),
-            nn.Softmax(dim=1),
-        )
         self.layer_position = nn.Sequential(
             nn.Linear(64, 2),
         )
@@ -167,16 +175,13 @@ class InddorModel(LightningModule):
 
         x = torch.cat((x_build, x_wifi, x_beacon), dim=1)
         x = self.layers(x)
-        floor = self.layer_floor(x)
-        floor = (torch.argmax(floor, axis=1) - 3).view(-1, 1)
-        pos = self.layer_position(x)
-        x = torch.cat((floor, pos), dim=1)
-        return x
+        z = self.layer_position(x)
+        return z
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         lr_scheduler = {
-            "scheduler": torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.995),
+            "scheduler": torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99),
             "name": "lr",
         }
         return [optimizer], [lr_scheduler]
@@ -184,7 +189,7 @@ class InddorModel(LightningModule):
     def shared_step(self, batch):
         x, y = batch
         z = self(x)
-        loss = self.loss_fn(z, y)
+        loss = self.loss_fn(z, y[1])
         return z, loss
 
     def training_step(self, batch, batch_idx):
@@ -204,8 +209,8 @@ class InddorModel(LightningModule):
 
         outputs = {
             "test_loss": loss,
-            "actual": y.detach().cpu().numpy(),
-            "pred": z.detach().cpu().numpy(),
+            "floor": y[0].detach().cpu().numpy(),
+            "floor_hat": y[0].detach().cpu().numpy(),
         }
         return outputs
 
@@ -214,13 +219,13 @@ class InddorModel(LightningModule):
         actuals = []
 
         for output in test_outputs:
-            preds.append(output["pred"])
-            actuals.append(output["actual"])
+            actuals.append(output["floor"])
+            preds.append(output["floor_hat"])
 
         pred = np.concatenate(preds, axis=0)
         actual = np.concatenate(actuals, axis=0)
 
-        figure = self.floor_bar_plot(actual[:, 0], pred[:, 0])
+        figure = self.floor_bar_plot(actual, pred)
         # https://pytorch-lightning.readthedocs.io/en/latest/common/loggers.html#tensorboard
         self.logger.experiment.add_figure("floor_cnt", figure, 0)
 

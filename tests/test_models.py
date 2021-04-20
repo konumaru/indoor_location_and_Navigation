@@ -65,10 +65,13 @@ def test_indoor_model():
     waypoint = torch.rand(size=(batch_size, 2))
 
     x = (input_build, input_wifi, input_beacon)
-    y = torch.cat((floor, waypoint), dim=1)
+    y = (floor, waypoint)
 
     model = models.InddorModel()
     z = model(x)
 
-    loss_fn = models.MeanPositionLoss()
-    loss = loss_fn(z, y)
+    # loss_fn = models.MeanPositionLoss()
+    # loss = loss_fn(z, y)
+    loss_fn = models.RMSELoss()
+    loss = loss_fn(z, y[1])
+    loss.backward()

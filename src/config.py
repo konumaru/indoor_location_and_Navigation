@@ -40,7 +40,7 @@ class Config(CommonConfig):
     )
 
     callbacks = [checkpoint_callback, early_stop_callback, lr_monitor]
-    logger = TensorBoardLogger(save_dir="../tb_logs", name="Add-BeaconFeature")
+    logger = TensorBoardLogger(save_dir="../tb_logs", name="Change-LossFunction-RMSE")
 
     def __init__(self):
         super(CommonConfig, self).__init__()
