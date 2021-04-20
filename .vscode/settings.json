@@ -7,5 +7,4 @@
     "python.linting.enabled": true,
     "jupyter.jupyterServerType": "local",
     "git.ignoreLimitWarning": true,
-
 }

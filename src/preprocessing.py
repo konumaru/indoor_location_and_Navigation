@@ -86,15 +86,14 @@ def create_build_feature():
 # ==== wifi ===
 
 
-@save_cache("../data/preprocessing/train_wifi_results.pkl", True)
-def create_wifi():
+def create_wifi(waypoint: np.ndarray, scr_dir: str = "../data/working"):
     def get_wifi_feature(path_id, gdf):
         seq_len = 100
         bssid = []
         rssi = []
         freq = []
 
-        feature = load_pickle(f"../data/working/{path_id}.pkl", verbose=False)
+        feature = load_pickle(f"{scr_dir}/{path_id}.pkl", verbose=False)
         wifi = feature.wifi.copy()
         wifi["bssid"] = wifi["bssid"].map(bssid_map)
 
@@ -112,12 +111,12 @@ def create_wifi():
             pre_flag = (
                 np.ones(len(ts_wifi)).astype(bool)
                 if ts_pre_wp is None
-                else (ts_pre_wp < ts_wifi)
+                else (int(ts_pre_wp) < ts_wifi)
             )
             psot_flag = (
                 np.ones(len(ts_wifi)).astype(bool)
                 if ts_post_wp is None
-                else (ts_wifi < ts_post_wp)
+                else (ts_wifi < int(ts_post_wp))
             )
             _wifi = _wifi[pre_flag & psot_flag]
 
@@ -128,9 +127,13 @@ def create_wifi():
             _rssi = np.tile(-999, seq_len)
             _freq = np.tile(-999, seq_len)
 
-            _bssid[: len(_wifi)] = _wifi["bssid"].astype("int32").to_numpy()
-            _rssi[: len(_wifi)] = _wifi["rssi"].astype("float32").to_numpy()
-            _freq[: len(_wifi)] = _wifi["frequency"].astype("float32").to_numpy()
+            _bssid[: len(_wifi)] = _wifi["bssid"].fillna(0).astype("int32").to_numpy()
+            _rssi[: len(_wifi)] = (
+                _wifi["rssi"].fillna(-999).astype("float32").to_numpy()
+            )
+            _freq[: len(_wifi)] = (
+                _wifi["frequency"].fillna(-999).astype("float32").to_numpy()
+            )
 
             bssid.append(_bssid)
             rssi.append(_rssi)
@@ -138,7 +141,6 @@ def create_wifi():
 
         return bssid, rssi, freq
 
-    waypoint = load_pickle("../data/preprocessing/train_waypoint.pkl", verbose=False)
     bssid_map = load_pickle("../data/label_encode/map_bssid.pkl", verbose=False)
     results = Parallel(n_jobs=-1)(
         delayed(get_wifi_feature)(path_id, gdf)
@@ -147,8 +149,15 @@ def create_wifi():
     return results
 
 
+@save_cache("../data/preprocessing/train_wifi_results.pkl", True)
+def get_wifi_results():
+    waypoint = load_pickle("../data/preprocessing/train_waypoint.pkl", verbose=False)
+    results = create_beacon(waypoint)
+    return results
+
+
 def create_wifi_feature():
-    results = create_wifi()
+    results = get_wifi_results()
     bssid, rssi, freq = zip(*results)
 
     def save_scaler_and_npy(data: np.ndarray, name: str):
@@ -170,15 +179,14 @@ def create_wifi_feature():
 # === beacon ===
 
 
-@save_cache("../data/preprocessing/train_beacon_results.pkl", True)
-def create_beacon():
+def create_beacon(waypoint: np.ndarray, scr_dir: str = "../data/working"):
     def get_beacon_feature(path_id, gdf):
         seq_len = 20
         uuid = []
         tx_power = []
         rssi = []
 
-        feature = load_pickle(f"../data/working/{path_id}.pkl", verbose=False)
+        feature = load_pickle(f"{scr_dir}/{path_id}.pkl", verbose=False)
         data = feature.beacon.copy()
         data["uuid"] = data["uuid"].map(uuid_map)
 
@@ -196,12 +204,12 @@ def create_beacon():
             pre_flag = (
                 np.ones(len(ts_data)).astype(bool)
                 if ts_pre_wp == None
-                else (ts_pre_wp < ts_data)
+                else (int(ts_pre_wp) < ts_data)
             )
             psot_flag = (
                 np.ones(len(ts_data)).astype(bool)
                 if ts_post_wp == None
-                else (ts_data < ts_post_wp)
+                else (ts_data < int(ts_post_wp))
             )
 
             _data = _data[pre_flag & psot_flag]
@@ -226,7 +234,6 @@ def create_beacon():
 
         return uuid, tx_power, rssi
 
-    waypoint = load_pickle("../data/preprocessing/train_waypoint.pkl", verbose=False)
     uuid_map = load_pickle("../data/label_encode/map_beacon_uuid.pkl", verbose=False)
     results = Parallel(n_jobs=-1)(
         delayed(get_beacon_feature)(path_id, gdf)
@@ -235,8 +242,15 @@ def create_beacon():
     return results
 
 
+@save_cache("../data/preprocessing/train_beacon_results.pkl", True)
+def get_beacon_results():
+    waypoint = load_pickle("../data/preprocessing/train_waypoint.pkl", verbose=False)
+    results = create_beacon(waypoint)
+    return results
+
+
 def create_beacon_feature():
-    results = create_beacon()
+    results = get_beacon_results()
     uuid, tx_power, rssi = zip(*results)
 
     def save_scaler_and_npy(data: np.ndarray, name: str):

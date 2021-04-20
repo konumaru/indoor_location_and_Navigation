@@ -7,9 +7,11 @@ from joblib import Parallel, delayed
 import torch
 from torch.utils.data import Dataset, DataLoader
 
-from model import InddorModel
+from models import InddorModel
+from preprocessing import create_wifi, create_beacon
 from utils.feature import FeatureStore
 from utils.common import load_pickle, dump_pickle, save_cache
+
 
 UPDATE_RAW_DATA = False
 
@@ -33,6 +35,13 @@ def extract_raw_data():
         )
         feature.load_all_data()
         feature.save()
+
+
+def transform_by_scaler_and_save_npy(data: np.ndarray, name: str):
+    scaler = load_pickle(f"../data/scaler/scaler_{name}.pkl")
+    data = scaler.transform(data)
+    data = data.astype("float32")
+    np.save(f"../data/submit/test_{name}.npy", data)
 
 
 @save_cache("../data/submit/test_waypoint.pkl", True)
@@ -62,116 +71,42 @@ def create_test_build():
 
 
 @save_cache("../data/submit/test_wifi_results.pkl", True)
-def create_test_wifi():
-    def estimate_timestamp_gap(df: pd.DataFrame) -> int:
-        df_groups = df.groupby("timestamp")
-        ts_gap = (
-            df_groups["last_seen_timestamp"].max().sort_index().astype(int)
-            - df_groups["timestamp"].max().sort_index().astype(int)
-        ).max()
-        return ts_gap
-
-    def get_wifi_feature(path_id, gdf):
-        seq_len = 100
-        bssid = []
-        rssi = []
-        freq = []
-        ts_diff = []
-
-        feature = load_pickle(f"../data/submit/path_data/{path_id}.pkl", verbose=False)
-        wifi = feature.wifi.copy()
-        wifi["bssid"] = wifi["bssid"].map(bssid_map)
-
-        ts_gap = estimate_timestamp_gap(wifi.copy())
-        gdf["timestamp"] += ts_gap
-
-        min_idx = gdf.index.min()
-        max_idx = gdf.index.max()
-
-        for i, row in gdf.iterrows():
-            ts_pre_wp = int(gdf.loc[i - 1, "timestamp"]) if i > min_idx else None
-            ts_current_wp = int(gdf.loc[i, "timestamp"])
-            ts_post_wp = int(gdf.loc[i + 1, "timestamp"]) if (i + 1) < max_idx else None
-
-            _wifi = wifi.copy()
-            # Fix timestamp with last_seen_timestamp of wifi.
-            ts_gap = estimate_timestamp_gap(_wifi.copy())
-            _wifi["timestamp"] += ts_gap
-            # NOTE: ターゲットとなるwaypointとその前後のwaypointの間にあるデータを取得する。
-            ts_wifi = _wifi["timestamp"].values
-            pre_flag = (
-                np.ones(len(ts_wifi)).astype(bool)
-                if ts_pre_wp is None
-                else (ts_pre_wp < ts_wifi)
-            )
-            psot_flag = (
-                np.ones(len(ts_wifi)).astype(bool)
-                if ts_post_wp is None
-                else (ts_wifi < ts_post_wp)
-            )
-            _wifi = _wifi[pre_flag & psot_flag]
-            _wifi["ts_diff_last_seen"] = (
-                _wifi["timestamp"] - _wifi["last_seen_timestamp"]
-            )
-
-            _wifi = _wifi.sort_values(by="rssi", ascending=False)
-            _wifi = _wifi.head(seq_len)
-
-            _bssid = np.zeros(seq_len)
-            _rssi = np.tile(-999, seq_len)
-            _freq = np.tile(-999, seq_len)
-            _ts_diff = np.tile(-999, seq_len)
-
-            _bssid[: len(_wifi)] = _wifi["bssid"].fillna(0).to_numpy()
-            _rssi[: len(_wifi)] = _wifi["rssi"].fillna(-999).to_numpy()
-            _freq[: len(_wifi)] = _wifi["frequency"].fillna(-999).to_numpy()
-            _ts_diff[: len(_wifi)] = (
-                _wifi["ts_diff_last_seen"].astype("float32").to_numpy()
-            )
-
-            bssid.append(_bssid.astype("int32"))
-            rssi.append(_rssi.astype("float32"))
-            freq.append(_freq.astype("float32"))
-            ts_diff.append(_ts_diff.astype("float32"))
-
-        return bssid, rssi, freq, ts_diff
-
+def get_wifi_results():
     waypoint = load_pickle("../data/submit/test_waypoint.pkl", verbose=False)
-    waypoint["timestamp"] = waypoint["timestamp"].astype("int64")
-    bssid_map = load_pickle("../data/label_encode/map_bssid.pkl", verbose=False)
-    results = Parallel(n_jobs=-1)(
-        delayed(get_wifi_feature)(path_id, gdf)
-        for path_id, gdf in track(waypoint.groupby("path"))
-    )
+    results = create_wifi(waypoint, "../data/submit/path_data")
     return results
 
 
 def create_wifi_feature():
-    results = create_test_wifi()
-    bssid, rssi, freq, ts_diff = zip(*results)
-
-    prefix = "../data/submit/test"
+    results = get_wifi_results()
+    bssid, rssi, freq = zip(*results)
 
     bssid = np.concatenate(bssid, axis=0).astype("int32")
-    np.save(f"{prefix}_wifi_bssid.npy", bssid)
-
-    scaler = load_pickle("../data/scaler/scaler_rssi.pkl")
-    rssi = np.concatenate(rssi, axis=0)
-    rssi = scaler.transform(rssi)
-    rssi = rssi.astype("float32")
-    np.save(f"{prefix}_wifi_rssi.npy", rssi)
-
-    scaler = load_pickle("../data/scaler/scaler_rssi.pkl")
     freq = np.concatenate(freq, axis=0)
-    freq = scaler.transform(freq)
-    freq = freq.astype("float32")
-    np.save(f"{prefix}_wifi_freq.npy", freq)
+    rssi = np.concatenate(rssi, axis=0)
 
-    scaler = load_pickle("../data/scaler/scaler_ts_diff.pkl")
-    ts_diff = np.concatenate(ts_diff, axis=0)
-    ts_diff = scaler.transform(ts_diff)
-    ts_diff = ts_diff.astype("float32")
-    np.save(f"{prefix}_wifi_ts_diff.npy", ts_diff)
+    np.save(f"../data/submit/test_wifi_bssid.npy", bssid)
+    transform_by_scaler_and_save_npy(rssi, "wifi_rssi")
+    transform_by_scaler_and_save_npy(freq, "wifi_freq")
+
+
+@save_cache("../data/submit/test_beacon_results.pkl", True)
+def get_beacon_results():
+    waypoint = load_pickle("../data/submit/test_waypoint.pkl", verbose=False)
+    results = create_beacon(waypoint, "../data/submit/path_data")
+    return results
+
+
+def create_beacon_feature():
+    results = get_beacon_results()
+    uuid, tx_power, rssi = zip(*results)
+
+    uuid = np.concatenate(uuid, axis=0).astype("int32")
+    tx_power = np.concatenate(tx_power, axis=0)
+    rssi = np.concatenate(rssi, axis=0)
+
+    transform_by_scaler_and_save_npy(tx_power, "beacon_tx_power")
+    transform_by_scaler_and_save_npy(rssi, "beacon_rssi")
 
 
 class IndoorTestDataset(Dataset):
@@ -217,6 +152,7 @@ def main():
     _ = create_test_waypoint()
     _ = create_test_build()
     _ = create_wifi_feature()
+    _ = create_beacon_feature()
 
     # Define dataset and dataloader.
     dataset = IndoorTestDataset()

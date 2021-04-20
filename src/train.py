@@ -39,7 +39,6 @@ class IndoorDataset(Dataset):
 
         # Build feature.
         site_id = np.load(featfure_dir / "train_site_id.npy")
-
         self.site_id = site_id[data_index].reshape(-1, 1)
 
         # Wifi features.
