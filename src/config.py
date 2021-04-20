@@ -26,7 +26,7 @@ class DebugConfig(CommonConfig):
 class Config(CommonConfig):
     accelerator = "dp"
     gpus = 1
-    NUM_EPOCH = 1  # 200
+    NUM_EPOCH = 200
     DEV_RUN = 0
 
     checkpoint_callback = ModelCheckpoint(monitor="valid_loss", mode="min")
@@ -40,7 +40,7 @@ class Config(CommonConfig):
     )
 
     callbacks = [checkpoint_callback, early_stop_callback, lr_monitor]
-    logger = TensorBoardLogger(save_dir="../tb_logs", name="Test-BeaconFeature")
+    logger = TensorBoardLogger(save_dir="../tb_logs", name="Add-BeaconFeature")
 
     def __init__(self):
         super(CommonConfig, self).__init__()

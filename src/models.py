@@ -17,7 +17,8 @@ class MeanPositionLoss(nn.Module):
 
     def forward(self, y_hat, y):
         p = 15
-        diff_f = torch.abs(y_hat[:, 0] - y[:, 0])
+        # diff_f = torch.abs(y_hat[:, 0] - y[:, 0])
+        diff_f = torch.abs(y[:, 0] - y[:, 0])
         diff_x = y_hat[:, 1] - y[:, 1]
         diff_y = y_hat[:, 2] - y[:, 2]
 
