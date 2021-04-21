@@ -88,28 +88,25 @@ def create_build_feature():
 
 def create_wifi(waypoint: np.ndarray, scr_dir: str = "../data/working"):
     def get_wifi_feature(path_id, gdf):
-        seq_len = 100
-        bssid = []
-        rssi = []
-        freq = []
+        ts_waypoint = gdf["timestamp"].to_numpy()
+        min_idx = 0
+        max_idx = len(ts_waypoint) - 1
 
         feature = load_pickle(f"{scr_dir}/{path_id}.pkl", verbose=False)
         wifi = feature.wifi.copy()
         wifi["bssid"] = wifi["bssid"].map(bssid_map)
 
-        min_idx = gdf.index.min()
-        max_idx = gdf.index.max()
+        seq_len = 100
+        bssid = []
+        rssi = []
+        freq = []
 
-        for i, row in gdf.iterrows():
-            ts_pre_wp = None  # gdf.loc[i - 1, "timestamp"] if i > min_idx else None
-            ts_current_wp = gdf.loc[i, "timestamp"]
-            ts_post_wp = (
-                None  # gdf.loc[i + 1, "timestamp"] if (i + 1) < max_idx else None
-            )
-
-            _wifi = wifi.copy()
+        for i, (_, row) in enumerate(gdf.iterrows()):
+            n_diff = 1
+            ts_pre_wp = ts_waypoint[i - n_diff] if (i - n_diff) >= min_idx else None
+            ts_post_wp = ts_waypoint[i + n_diff] if (i + n_diff) <= max_idx else None
             # NOTE: ターゲットとなるwaypointとその前後のwaypointの間にあるデータを取得する。
-            ts_wifi = _wifi["timestamp"].values
+            ts_wifi = wifi["timestamp"].to_numpy()
             pre_flag = (
                 np.ones(len(ts_wifi)).astype(bool)
                 if ts_pre_wp is None
@@ -120,22 +117,22 @@ def create_wifi(waypoint: np.ndarray, scr_dir: str = "../data/working"):
                 if ts_post_wp is None
                 else (ts_wifi < int(ts_post_wp))
             )
-            _wifi = _wifi[pre_flag & psot_flag]
-
-            _wifi = _wifi.sort_values(by="rssi", ascending=False)
+            _wifi = wifi[pre_flag & psot_flag].copy()
+            _wifi.sort_values(by="rssi", ascending=False, inplace=True)
+            _wifi.drop_duplicates(subset=["bssid"], keep="first", inplace=True)
             _wifi = _wifi.head(seq_len)
+            # Fillna
+            _wifi["bssid"].fillna(0, inplace=True)
+            _wifi["rssi"].fillna(-999, inplace=True)
+            _wifi["frequency"].fillna(-999, inplace=True)
 
             _bssid = np.zeros(seq_len)
             _rssi = np.tile(-999, seq_len)
             _freq = np.tile(-999, seq_len)
 
-            _bssid[: len(_wifi)] = _wifi["bssid"].fillna(0).astype("int32").to_numpy()
-            _rssi[: len(_wifi)] = (
-                _wifi["rssi"].fillna(-999).astype("float32").to_numpy()
-            )
-            _freq[: len(_wifi)] = (
-                _wifi["frequency"].fillna(-999).astype("float32").to_numpy()
-            )
+            _bssid[: len(_wifi)] = _wifi["bssid"].astype("int32").to_numpy()
+            _rssi[: len(_wifi)] = _wifi["rssi"].astype("float32").to_numpy()
+            _freq[: len(_wifi)] = _wifi["frequency"].astype("float32").to_numpy()
 
             bssid.append(_bssid)
             rssi.append(_rssi)
@@ -183,28 +180,26 @@ def create_wifi_feature():
 
 def create_beacon(waypoint: np.ndarray, scr_dir: str = "../data/working"):
     def get_beacon_feature(path_id, gdf):
-        seq_len = 20
-        uuid = []
-        tx_power = []
-        rssi = []
+        ts_waypoint = gdf["timestamp"].to_numpy()
+        min_idx = 0
+        max_idx = len(ts_waypoint) - 1
 
         feature = load_pickle(f"{scr_dir}/{path_id}.pkl", verbose=False)
         data = feature.beacon.copy()
         data["uuid"] = data["uuid"].map(uuid_map)
 
-        min_idx = gdf.index.min()
-        max_idx = gdf.index.max()
+        seq_len = 20
+        uuid = []
+        tx_power = []
+        rssi = []
 
-        for i, row in gdf.iterrows():
-            ts_pre_wp = None  # gdf.loc[i - 1, "timestamp"] if i > min_idx else None
-            ts_current_wp = gdf.loc[i, "timestamp"]
-            ts_post_wp = (
-                None  # gdf.loc[i + 1, "timestamp"] if (i + 1) < max_idx else None
-            )
+        for i, (_, row) in enumerate(gdf.iterrows()):
+            n_diff = 1
+            ts_pre_wp = ts_waypoint[i - n_diff] if (i - n_diff) >= min_idx else None
+            ts_post_wp = ts_waypoint[i + n_diff] if (i + n_diff) <= max_idx else None
 
-            _data = data.copy()
             # NOTE: ターゲットとなるwaypointとその前後のwaypointの間にあるデータを取得する。
-            ts_data = _data["timestamp"].values
+            ts_data = data["timestamp"].to_numpy()
             pre_flag = (
                 np.ones(len(ts_data)).astype(bool)
                 if ts_pre_wp == None
@@ -216,8 +211,9 @@ def create_beacon(waypoint: np.ndarray, scr_dir: str = "../data/working"):
                 else (ts_data < int(ts_post_wp))
             )
 
-            _data = _data[pre_flag & psot_flag]
-            _data = _data.sort_values(by="rssi", ascending=False)
+            _data = data[pre_flag & psot_flag].copy()
+            _data.sort_values(by="rssi", ascending=False, inplace=True)
+            _data.drop_duplicates(subset=["uuid"], keep="first", inplace=True)
             _data = _data.head(seq_len)
 
             _uuid = np.zeros(seq_len)
