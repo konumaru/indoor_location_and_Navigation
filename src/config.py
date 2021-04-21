@@ -7,7 +7,7 @@ class CommonConfig:
     SEED = 42
 
     NUM_FOLD = 5
-    BATCH_SIZE = 512
+    BATCH_SIZE = 256
 
 
 class DebugConfig(CommonConfig):

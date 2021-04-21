@@ -82,8 +82,8 @@ def create_wifi_feature():
     bssid, rssi, freq = zip(*results)
 
     bssid = np.concatenate(bssid, axis=0).astype("int32")
-    freq = np.concatenate(freq, axis=0)
     rssi = np.concatenate(rssi, axis=0)
+    freq = np.concatenate(freq, axis=0)
 
     np.save(f"../data/submit/test_wifi_bssid.npy", bssid)
     transform_by_scaler_and_save_npy(rssi, "wifi_rssi")
@@ -173,12 +173,13 @@ def main():
         dataset,
         batch_size=512,
         num_workers=8,
+        shuffle=False,
         drop_last=False,
     )
 
     # Load model and predict.
     model = InddorModel.load_from_checkpoint(
-        "../tb_logs/Change-LossFunction-RMSE/version_9/checkpoints/epoch=61-step=16119.ckpt"
+        "../tb_logs/Change-LossFunction-RMSE/version_11/checkpoints/epoch=36-step=9619.ckpt"
     )
     model.eval()
     model.freeze()
@@ -201,8 +202,6 @@ def main():
     submission.to_csv("../data/submit/submission.csv", index=False)
 
     assert submission.isnull().mean().max() == 0.0
-
-    print(submission["floor"].value_counts().sort_index())
 
 
 if __name__ == "__main__":

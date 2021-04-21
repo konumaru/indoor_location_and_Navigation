@@ -101,9 +101,11 @@ def create_wifi(waypoint: np.ndarray, scr_dir: str = "../data/working"):
         max_idx = gdf.index.max()
 
         for i, row in gdf.iterrows():
-            ts_pre_wp = gdf.loc[i - 1, "timestamp"] if i > min_idx else None
+            ts_pre_wp = None  # gdf.loc[i - 1, "timestamp"] if i > min_idx else None
             ts_current_wp = gdf.loc[i, "timestamp"]
-            ts_post_wp = gdf.loc[i + 1, "timestamp"] if (i + 1) < max_idx else None
+            ts_post_wp = (
+                None  # gdf.loc[i + 1, "timestamp"] if (i + 1) < max_idx else None
+            )
 
             _wifi = wifi.copy()
             # NOTE: ターゲットとなるwaypointとその前後のwaypointの間にあるデータを取得する。
@@ -149,10 +151,10 @@ def create_wifi(waypoint: np.ndarray, scr_dir: str = "../data/working"):
     return results
 
 
-@save_cache("../data/preprocessing/train_wifi_results.pkl", True)
+@save_cache("../data/preprocessing/train_wifi_results.pkl", False)
 def get_wifi_results():
     waypoint = load_pickle("../data/preprocessing/train_waypoint.pkl", verbose=False)
-    results = create_beacon(waypoint)
+    results = create_wifi(waypoint)
     return results
 
 
@@ -194,9 +196,11 @@ def create_beacon(waypoint: np.ndarray, scr_dir: str = "../data/working"):
         max_idx = gdf.index.max()
 
         for i, row in gdf.iterrows():
-            ts_pre_wp = gdf.loc[i - 1, "timestamp"] if i > min_idx else None
+            ts_pre_wp = None  # gdf.loc[i - 1, "timestamp"] if i > min_idx else None
             ts_current_wp = gdf.loc[i, "timestamp"]
-            ts_post_wp = gdf.loc[i + 1, "timestamp"] if (i + 1) < max_idx else None
+            ts_post_wp = (
+                None  # gdf.loc[i + 1, "timestamp"] if (i + 1) < max_idx else None
+            )
 
             _data = data.copy()
             # NOTE: ターゲットとなるwaypointとその前後のwaypointの間にあるデータを取得する。
