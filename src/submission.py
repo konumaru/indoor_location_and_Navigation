@@ -70,7 +70,7 @@ def create_test_build():
     return build
 
 
-@save_cache("../data/submit/test_wifi_results.pkl", False)
+@save_cache("../data/submit/test_wifi_results.pkl", True)
 def get_wifi_results():
     waypoint = load_pickle("../data/submit/test_waypoint.pkl", verbose=False)
     results = create_wifi(waypoint, "../data/submit/path_data")
@@ -90,7 +90,7 @@ def create_wifi_feature():
     transform_by_scaler_and_save_npy(freq, "wifi_freq")
 
 
-@save_cache("../data/submit/test_beacon_results.pkl", False)
+@save_cache("../data/submit/test_beacon_results.pkl", True)
 def get_beacon_results():
     waypoint = load_pickle("../data/submit/test_waypoint.pkl", verbose=False)
     results = create_beacon(waypoint, "../data/submit/path_data")
@@ -179,24 +179,31 @@ def main():
 
     # Load model and predict.
     model = InddorModel.load_from_checkpoint(
-        "../tb_logs/Update-WifiAndBeaconFeature/version_1/checkpoints/epoch=63-step=16639.ckpt"
+        "../tb_logs/Update-WifiAndBeaconFeature/version_5/checkpoints/epoch=12-step=3379.ckpt"
     )
     model.eval()
     model.freeze()
 
-    preds = []
+    floor = []
+    postion = []
     for batch in dataloader:
         y_hat = model(batch)
-        preds.append(y_hat)
 
-    pred = torch.cat(preds, dim=0)
-    pred = pred.detach().numpy().copy()
-    print(pred.shape)
+        floor.append(y_hat[0])
+        postion.append(y_hat[1])
+
+    floor = torch.cat(floor, dim=0)
+    postion = torch.cat(postion, dim=0)
+
+    floor = floor.detach().numpy().copy().ravel()
+    postion = postion.detach().numpy().copy()
 
     # Dump submission file.
     submission = pd.read_csv("../data/raw/sample_submission.csv")
-    submission.iloc[:, 2:] = pred
+    submission.iloc[:, 1] = floor
+    submission.iloc[:, 2:] = postion
     print(submission.head())
+    print(submission["floor"].value_counts().sort_index())
 
     submission["floor"] = submission["floor"].astype(int)
     submission.to_csv("../data/submit/submission.csv", index=False)

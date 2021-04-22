@@ -11,21 +11,6 @@ import pytorch_lightning as pl
 from pytorch_lightning import LightningModule
 
 
-class MeanPositionLoss(nn.Module):
-    def __init__(self):
-        super(MeanPositionLoss, self).__init__()
-
-    def forward(self, y_hat, y):
-        p = 15
-        # diff_f = torch.abs(y_hat[:, 0] - y[:, 0])
-        diff_f = torch.abs(y[:, 0] - y[:, 0])
-        diff_x = y_hat[:, 1] - y[:, 1]
-        diff_y = y_hat[:, 2] - y[:, 2]
-
-        error = torch.sqrt(diff_x ** 2 + diff_y ** 2) + p * diff_f
-        return torch.mean(error)
-
-
 class RMSELoss(nn.Module):
     def __init__(self):
         super(RMSELoss, self).__init__()
@@ -34,6 +19,23 @@ class RMSELoss(nn.Module):
         diff_x = y_hat[:, 0] - y[:, 0]
         diff_y = y_hat[:, 1] - y[:, 1]
         error = torch.sqrt(diff_x ** 2 + diff_y ** 2)
+        return torch.mean(error)
+
+
+class MeanPositionLoss(nn.Module):
+    def __init__(self):
+        super(MeanPositionLoss, self).__init__()
+
+    def forward(self, y_hat, y):
+        floor, pos = y
+        floor_hat, pos_hat = y_hat
+
+        p = 1  # 15
+        diff_f = torch.abs(floor_hat - floor)
+        diff_x = pos_hat[:, 0] - pos[:, 0]
+        diff_y = pos_hat[:, 1] - pos[:, 1]
+
+        error = torch.sqrt(torch.pow(diff_x, 2) + torch.pow(diff_y, 2)) + p * diff_f
         return torch.mean(error)
 
 
@@ -144,7 +146,7 @@ class InddorModel(LightningModule):
         super(InddorModel, self).__init__()
         self.lr = lr
         # Define loss function.
-        self.loss_fn = RMSELoss()  # MeanPositionLoss()
+        self.loss_fn = MeanPositionLoss()  # RMSELoss()
         # Each data models.
         self.model_build = BuildModel()
         self.model_wifi = WifiModel()
@@ -162,7 +164,13 @@ class InddorModel(LightningModule):
             nn.Linear(256, 64),
             nn.ReLU(),
         )
+        self.layer_floor = nn.Sequential(
+            nn.Linear(64, 64),
+            nn.Linear(64, 14),
+            nn.Softmax(dim=1),
+        )
         self.layer_position = nn.Sequential(
+            nn.Linear(64, 64),
             nn.Linear(64, 2),
         )
 
@@ -175,8 +183,11 @@ class InddorModel(LightningModule):
 
         x = torch.cat((x_build, x_wifi, x_beacon), dim=1)
         x = self.layers(x)
-        z = self.layer_position(x)
-        return z
+
+        f = self.layer_floor(x)
+        f = (torch.argmax(f, axis=1) - 3).view(-1, 1)
+        pos = self.layer_position(x)
+        return (f, pos)
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
@@ -189,7 +200,7 @@ class InddorModel(LightningModule):
     def shared_step(self, batch):
         x, y = batch
         z = self(x)
-        loss = self.loss_fn(z, y[1])
+        loss = self.loss_fn(z, y)
         return z, loss
 
     def training_step(self, batch, batch_idx):
@@ -210,9 +221,9 @@ class InddorModel(LightningModule):
         outputs = {
             "test_loss": loss,
             "floor": y[0].detach().cpu().numpy(),
-            "floor_hat": y[0].detach().cpu().numpy(),
+            "floor_hat": z[0].detach().cpu().numpy(),
             "position": y[1].detach().cpu().numpy(),
-            "position_hat": z.detach().cpu().numpy(),
+            "position_hat": z[1].detach().cpu().numpy(),
         }
         return outputs
 

@@ -70,8 +70,10 @@ def test_indoor_model():
     model = models.InddorModel()
     z = model(x)
 
-    # loss_fn = models.MeanPositionLoss()
-    # loss = loss_fn(z, y)
-    loss_fn = models.RMSELoss()
-    loss = loss_fn(z, y[1])
-    loss.backward()
+    print(z)
+
+    loss_fn = models.MeanPositionLoss()
+    loss = loss_fn(z, y)
+    # loss_fn = models.RMSELoss()
+    # loss = loss_fn(z, y[1])
+    # loss.backward()
