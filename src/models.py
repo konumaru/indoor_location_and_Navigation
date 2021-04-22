@@ -45,8 +45,10 @@ class BuildModel(nn.Module):
         site_embed_dim: int = 64,
     ):
         super(BuildModel, self).__init__()
+        # TODO: floor and embed_floorを特徴量として追加する
         self.site_embed_dim = site_embed_dim
         self.output_dim = site_embed_dim
+
         self.embed_site = nn.Embedding(205, site_embed_dim)
 
     def forward(self, x):

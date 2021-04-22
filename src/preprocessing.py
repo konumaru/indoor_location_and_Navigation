@@ -119,7 +119,11 @@ def create_wifi(waypoint: np.ndarray, scr_dir: str = "../data/working"):
             )
             _wifi = wifi[pre_flag & psot_flag].copy()
             _wifi.sort_values(by="rssi", ascending=False, inplace=True)
-            _wifi.drop_duplicates(subset=["bssid"], keep="first", inplace=True)
+            _wifi.drop_duplicates(
+                subset=["bssid", "rssi", "frequency", "last_seen_timestamp"],
+                keep="first",
+                inplace=True,
+            )
             _wifi = _wifi.head(seq_len)
             # Fillna
             _wifi["bssid"].fillna(0, inplace=True)
@@ -213,7 +217,9 @@ def create_beacon(waypoint: np.ndarray, scr_dir: str = "../data/working"):
 
             _data = data[pre_flag & psot_flag].copy()
             _data.sort_values(by="rssi", ascending=False, inplace=True)
-            _data.drop_duplicates(subset=["uuid"], keep="first", inplace=True)
+            _data.drop_duplicates(
+                subset=["uuid", "tx_power", "rssi"], keep="first", inplace=True
+            )
             _data = _data.head(seq_len)
 
             _uuid = np.zeros(seq_len)
