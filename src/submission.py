@@ -178,9 +178,8 @@ def main():
     )
 
     # Load model and predict.
-    model = InddorModel.load_from_checkpoint(
-        "../tb_logs/Update-WifiAndBeaconFeature/version_5/checkpoints/epoch=12-step=3379.ckpt"
-    )
+    checkpoint = "tb_logs/Update-WifiAndBeaconFeature/version_7/checkpoints/epoch=18-step=4939.ckpt"
+    model = InddorModel.load_from_checkpoint(f"../{checkpoint}")
     model.eval()
     model.freeze()
 
