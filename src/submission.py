@@ -70,7 +70,7 @@ def create_test_build():
     return build
 
 
-@save_cache("../data/submit/test_wifi_results.pkl", True)
+@save_cache("../data/submit/test_wifi_results.pkl", False)
 def get_wifi_results():
     waypoint = load_pickle("../data/submit/test_waypoint.pkl", verbose=False)
     results = create_wifi(waypoint, "../data/submit/path_data")
@@ -90,7 +90,7 @@ def create_wifi_feature():
     transform_by_scaler_and_save_npy(freq, "wifi_freq")
 
 
-@save_cache("../data/submit/test_beacon_results.pkl", True)
+@save_cache("../data/submit/test_beacon_results.pkl", False)
 def get_beacon_results():
     waypoint = load_pickle("../data/submit/test_waypoint.pkl", verbose=False)
     results = create_beacon(waypoint, "../data/submit/path_data")
@@ -179,7 +179,7 @@ def main():
 
     # Load model and predict.
     model = InddorModel.load_from_checkpoint(
-        "../tb_logs/Change-LossFunction-RMSE/version_11/checkpoints/epoch=36-step=9619.ckpt"
+        "../tb_logs/Update-WifiAndBeaconFeature/version_1/checkpoints/epoch=63-step=16639.ckpt"
     )
     model.eval()
     model.freeze()

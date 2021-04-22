@@ -7,7 +7,7 @@ class CommonConfig:
     SEED = 42
 
     NUM_FOLD = 5
-    BATCH_SIZE = 256
+    BATCH_SIZE = 512
 
 
 class DebugConfig(CommonConfig):
@@ -34,13 +34,15 @@ class Config(CommonConfig):
     early_stop_callback = EarlyStopping(
         monitor="valid_loss",
         min_delta=0.01,
-        patience=20,
+        patience=10,
         verbose=False,
         mode="min",
     )
 
     callbacks = [checkpoint_callback, early_stop_callback, lr_monitor]
-    logger = TensorBoardLogger(save_dir="../tb_logs", name="Change-LossFunction-RMSE")
+    logger = TensorBoardLogger(
+        save_dir="../tb_logs", name="Update-WifiAndBeaconFeature"
+    )
 
     def __init__(self):
         super(CommonConfig, self).__init__()

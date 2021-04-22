@@ -148,7 +148,7 @@ def create_wifi(waypoint: np.ndarray, scr_dir: str = "../data/working"):
     return results
 
 
-@save_cache("../data/preprocessing/train_wifi_results.pkl", False)
+@save_cache("../data/preprocessing/train_wifi_results.pkl", True)
 def get_wifi_results():
     waypoint = load_pickle("../data/preprocessing/train_waypoint.pkl", verbose=False)
     results = create_wifi(waypoint)
@@ -242,7 +242,7 @@ def create_beacon(waypoint: np.ndarray, scr_dir: str = "../data/working"):
     return results
 
 
-@save_cache("../data/preprocessing/train_beacon_results.pkl", True)
+@save_cache("../data/preprocessing/train_beacon_results.pkl", False)
 def get_beacon_results():
     waypoint = load_pickle("../data/preprocessing/train_waypoint.pkl", verbose=False)
     results = create_beacon(waypoint)
