@@ -70,7 +70,7 @@ def create_test_build():
     return build
 
 
-@save_cache("../data/submit/test_wifi_results.pkl", True)
+@save_cache("../data/submit/test_wifi_results.pkl", False)
 def get_wifi_results():
     waypoint = load_pickle("../data/submit/test_waypoint.pkl", verbose=False)
     results = create_wifi(waypoint, "../data/submit/path_data")
@@ -178,7 +178,9 @@ def main():
     )
 
     # Load model and predict.
-    checkpoint = "tb_logs/Update-WifiAndBeaconFeature/version_7/checkpoints/epoch=18-step=4939.ckpt"
+    checkpoint = (
+        "tb_logs/Recreate-labelencodemap/version_2/checkpoints/epoch=18-step=5566.ckpt"
+    )
     model = InddorModel.load_from_checkpoint(f"../{checkpoint}")
     model.eval()
     model.freeze()

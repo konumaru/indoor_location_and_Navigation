@@ -15,31 +15,26 @@ from utils.common import load_pickle, dump_pickle, save_cache
 from utils.feature import FeatureStore
 
 
-@save_cache("../data/label_encode/map_site_id.pkl", True)
+@save_cache("../data/label_encode/map_site_id.pkl", False)
 def create_site_map(filepaths: List):
     def get_site_id_from_feature_store(filepath):
-        path_id = filepath.name.split(".")[0]
-
-        feature = load_pickle(f"../data/working/{path_id}.pkl", verbose=False)
+        feature = load_pickle(filepath, verbose=False)
         return feature.site_id
 
     site_ids = Parallel(n_jobs=-1)(
         delayed(get_site_id_from_feature_store)(filepath)
         for filepath in track(filepaths)
     )
+
     unique_site_ids = np.unique(site_ids)
     siteId_map = {site_id: i + 1 for i, site_id in enumerate(unique_site_ids)}
     return siteId_map
 
 
-@save_cache("../data/label_encode/map_bssid.pkl", True)
+@save_cache("../data/label_encode/map_bssid.pkl", False)
 def create_bssid_map(filepaths: List):
     def get_bssid_from_featureStore(filepath):
-        site_id = filepath.parent.parent.name
-        floor = filepath.parent.name
-        path_id = filepath.name.split(".")[0]
-
-        feature = load_pickle(f"../data/working/{path_id}.pkl", verbose=False)
+        feature = load_pickle(filepath, verbose=False)
         uniques = feature.wifi.bssid.unique()
         if len(uniques) > 0:
             return uniques
@@ -49,19 +44,18 @@ def create_bssid_map(filepaths: List):
     bssid = Parallel(n_jobs=-1)(
         delayed(get_bssid_from_featureStore)(filepath) for filepath in track(filepaths)
     )
-    bssid = np.concatenate(bssid, axis=0)
-    unique_bsid = np.unique(bssid)
 
-    bssid_map = {_bssid: i + 1 for i, _bssid in enumerate(unique_bsid)}
+    bssid = np.concatenate(bssid, axis=0)
+    unique_bssid = np.unique(bssid)
+
+    bssid_map = {_bssid: i + 1 for i, _bssid in enumerate(unique_bssid)}
     return bssid_map
 
 
-@save_cache("../data/label_encode/map_beacon_uuid.pkl", True)
+@save_cache("../data/label_encode/map_beacon_uuid.pkl", False)
 def create_beacon_uuid_map(filepaths: List):
     def get_beacon_uuid_from_feature_store(filepath):
-        path_id = filepath.name.split(".")[0]
-
-        feature = load_pickle(f"../data/working/{path_id}.pkl", verbose=False)
+        feature = load_pickle(filepath, verbose=False)
         uniques = feature.beacon.uuid.unique()
         if len(uniques) > 0:
             return uniques
@@ -81,12 +75,19 @@ def create_beacon_uuid_map(filepaths: List):
 
 
 def main():
-    src_dir = pathlib.Path("../data/raw/train/")
+    # Train files.
+    src_dir = pathlib.Path("../data/working/")
     filepaths = [
         path_filepath
-        for site_filepath in src_dir.glob("*")
-        for floor_filepath in site_filepath.glob("*")
-        for path_filepath in floor_filepath.glob("*")
+        for path_filepath in src_dir.glob("*")
+        if path_filepath.name != ".gitkeep"
+    ]
+    # Test files
+    src_test_dir = pathlib.Path("../data/submit/path_data/")
+    filepaths += [
+        path_filepath
+        for path_filepath in src_test_dir.glob("*")
+        if path_filepath.name != ".gitkeep"
     ]
 
     _ = create_site_map(filepaths)

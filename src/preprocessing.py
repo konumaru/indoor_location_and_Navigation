@@ -50,7 +50,7 @@ def create_waypoint():
 # === build ===
 
 
-@save_cache("../data/preprocessing/train_build_results.pkl", True)
+@save_cache("../data/preprocessing/train_build_results.pkl", False)
 def create_build():
     def get_waypoint_from_featureStore(path_id):
         feature = load_pickle(f"../data/working/{path_id}.pkl", verbose=False)
@@ -94,7 +94,8 @@ def create_wifi(waypoint: np.ndarray, scr_dir: str = "../data/working"):
 
         feature = load_pickle(f"{scr_dir}/{path_id}.pkl", verbose=False)
         wifi = feature.wifi.copy()
-        wifi["bssid"] = wifi["bssid"].map(bssid_map)
+        wifi["bssid"] = wifi["bssid"].map(bssid_map).astype("int32")
+        # wifi.loc[~wifi["bssid"].isin(bssid_map.keys()), "bssid"] = 0
 
         seq_len = 100
         bssid = []
@@ -152,7 +153,7 @@ def create_wifi(waypoint: np.ndarray, scr_dir: str = "../data/working"):
     return results
 
 
-@save_cache("../data/preprocessing/train_wifi_results.pkl", True)
+@save_cache("../data/preprocessing/train_wifi_results.pkl", False)
 def get_wifi_results():
     waypoint = load_pickle("../data/preprocessing/train_waypoint.pkl", verbose=False)
     results = create_wifi(waypoint)

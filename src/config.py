@@ -40,9 +40,7 @@ class Config(CommonConfig):
     )
 
     callbacks = [checkpoint_callback, early_stop_callback, lr_monitor]
-    logger = TensorBoardLogger(
-        save_dir="../tb_logs", name="Update-WifiAndBeaconFeature"
-    )
+    logger = TensorBoardLogger(save_dir="../tb_logs", name="Recreate-labelencodemap")
 
     def __init__(self):
         super(CommonConfig, self).__init__()

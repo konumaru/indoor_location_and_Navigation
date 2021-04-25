@@ -49,7 +49,7 @@ class BuildModel(nn.Module):
         self.site_embed_dim = site_embed_dim
         self.output_dim = site_embed_dim
 
-        self.embed_site = nn.Embedding(205, site_embed_dim)
+        self.embed_site = nn.Embedding(205 + 1, site_embed_dim)
 
     def forward(self, x):
         site = x[0]
@@ -71,7 +71,7 @@ class WifiModel(nn.Module):
         self.bssid_embed_dim = bssid_embed_dim
         self.output_dim = output_dim
 
-        self.embed_bssid = nn.Embedding(237452 + 1, bssid_embed_dim)
+        self.embed_bssid = nn.Embedding(238859 + 1, bssid_embed_dim)
         # LSTM layers.
         n_dim_lstm = bssid_embed_dim + 2
         self.lstm_out_dim = 16
@@ -113,7 +113,7 @@ class BeaconModel(nn.Module):
         self.seq_len = seq_len
         self.output_dim = output_dim
 
-        self.embed_uuid = nn.Embedding(662 + 1, uuid_embed_dim)
+        self.embed_uuid = nn.Embedding(663 + 1, uuid_embed_dim)
         # LSTM layers.
         n_dim_lstm = uuid_embed_dim + 2
         self.lstm_out_dim = 16
@@ -161,6 +161,7 @@ class InddorModel(LightningModule):
         )
 
         self.layers = nn.Sequential(
+            nn.BatchNorm1d(input_dim),
             nn.Linear(input_dim, 256),
             nn.ReLU(),
             nn.Linear(256, 64),
