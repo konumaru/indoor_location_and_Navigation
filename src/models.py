@@ -198,7 +198,7 @@ class InddorModel(LightningModule):
             "scheduler": torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.995),
             "name": "lr",
         }
-        return [optimizer]  # , [lr_scheduler]
+        return [optimizer], [lr_scheduler]
 
     def shared_step(self, batch):
         x, y = batch
@@ -209,12 +209,20 @@ class InddorModel(LightningModule):
     def training_step(self, batch, batch_idx):
         _, loss = self.shared_step(batch)
         self.log("train_loss", loss)
-        return loss
+        return {"loss": loss}
+
+    def training_epoch_end(self, outputs):
+        avg_loss = torch.stack([x["loss"] for x in outputs]).mean()
+        self.log("train_epoch_loss", avg_loss)
 
     def validation_step(self, batch, batch_idx):
         _, loss = self.shared_step(batch)
         self.log("valid_loss", loss)
-        return loss
+        return {"loss": loss}
+
+    def validation_epoch_end(self, outputs):
+        avg_loss = torch.stack([x["loss"] for x in outputs]).mean()
+        self.log("valid_epoch_loss", avg_loss)
 
     def test_step(self, batch, batch_idx):
         x, y = batch

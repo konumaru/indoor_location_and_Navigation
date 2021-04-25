@@ -1,4 +1,5 @@
 import pathlib
+import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -11,120 +12,31 @@ from torch.utils.data import Dataset, DataLoader
 
 import pytorch_lightning as pl
 from pytorch_lightning import Trainer
+from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.callbacks.early_stopping import EarlyStopping
+from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 
 from utils.common import timer
 from utils.common import load_pickle
 
+from dataset import IndoorDataModule
 from models import InddorModel, MeanPositionLoss
-
-DEBUG = False
-
-if DEBUG:
-    from config import DebugConfig as Config
-else:
-    from config import Config as Config
-
-
-class IndoorDataset(Dataset):
-    def __init__(self, data_index):
-        # Load features.
-        featfure_dir = pathlib.Path("../data/preprocessing/")
-
-        # Target, waypoint
-        wp = load_pickle(featfure_dir / "train_waypoint.pkl", verbose=False)
-        floor = wp[["floor"]].to_numpy().astype("int32")
-        position = wp[["x", "y"]].to_numpy().astype("float32")
-        self.floor = floor[data_index]
-        self.position = position[data_index]
-
-        # Build feature.
-        site_id = np.load(featfure_dir / "train_site_id.npy")
-        self.site_id = site_id[data_index].reshape(-1, 1)
-
-        # Wifi features.
-        wifi_bssid = np.load(featfure_dir / "train_wifi_bssid.npy")
-        wifi_rssi = np.load(featfure_dir / "train_wifi_rssi.npy")
-        wifi_freq = np.load(featfure_dir / "train_wifi_freq.npy")
-
-        self.wifi_bssid = wifi_bssid[data_index][:, :100]
-        self.wifi_rssi = wifi_rssi[data_index][:, :100]
-        self.wifi_freq = wifi_freq[data_index][:, :100]
-
-        # Beacon featurees.
-        beacon_uuid = np.load(featfure_dir / "train_beacon_uuid.npy")
-        beacon_tx_power = np.load(featfure_dir / "train_beacon_tx_power.npy")
-        beacon_rssi = np.load(featfure_dir / "train_beacon_rssi.npy")
-
-        self.beacon_uuid = beacon_uuid[data_index]
-        self.beacon_tx_power = beacon_tx_power[data_index]
-        self.beacon_rssi = beacon_rssi[data_index]
-
-    def __len__(self):
-        return len(self.site_id)
-
-    def __getitem__(self, idx):
-        x_build = self.site_id[idx]
-        x_wifi = (
-            self.wifi_bssid[idx],
-            self.wifi_rssi[idx],
-            self.wifi_freq[idx],
-        )
-        x_beacon = (
-            self.beacon_uuid[idx],
-            self.beacon_tx_power[idx],
-            self.beacon_rssi[idx],
-        )
-
-        x = (x_build, x_wifi, x_beacon)
-        y = (self.floor[idx], self.position[idx])
-        return x, y
-
-
-class IndoorDataModule(pl.LightningDataModule):
-    def __init__(self, batch_size, train_idx, valid_idx, test_idx):
-        super().__init__()
-        self.batch_size = batch_size
-        self.train_idx = train_idx
-        self.valid_idx = valid_idx
-        self.test_idx = test_idx
-
-    def setup(self, stage=None):
-        self.train_dataset = IndoorDataset(self.train_idx)
-        self.valid_dataset = IndoorDataset(self.valid_idx)
-        self.test_dataset = IndoorDataset(self.test_idx)
-
-    def train_dataloader(self):
-        return DataLoader(
-            self.train_dataset,
-            batch_size=self.batch_size,
-            num_workers=8,
-            pin_memory=True,
-            shuffle=True,
-            drop_last=True,
-        )
-
-    def val_dataloader(self):
-        return DataLoader(
-            self.valid_dataset,
-            batch_size=self.batch_size,
-            num_workers=8,
-            pin_memory=True,
-            drop_last=True,
-        )
-
-    def test_dataloader(self):
-        return DataLoader(
-            self.test_dataset,
-            batch_size=self.batch_size,
-            num_workers=8,
-            pin_memory=True,
-            drop_last=False,
-        )
 
 
 def main():
-    pl.seed_everything(Config.SEED)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-d", "--debug", help="debug mode", action="store_true")
+    parser.add_argument("-v", "--valid", help="validation mode", action="store_true")
+    args = parser.parse_args()
 
+    if args.debug:
+        from config import DebugConfig as Config
+    elif args.valid:
+        from config import ValidConfig as Config
+    else:
+        from config import Config as Config
+
+    pl.seed_everything(Config.SEED)
     for n_fold in range(Config.NUM_FOLD):
         # Load index and select fold daata.
         train_idx = np.load(f"../data/fold/fold{n_fold:>02}_train_idx.npy")
@@ -135,17 +47,32 @@ def main():
         datamodule = IndoorDataModule(Config.BATCH_SIZE, train_idx, valid_idx, test_idx)
         datamodule.setup()
 
+        checkpoint_callback = ModelCheckpoint(monitor="valid_loss", mode="min")
+        lr_monitor = LearningRateMonitor(logging_interval="step")
+        early_stop_callback = EarlyStopping(
+            monitor="valid_loss",
+            min_delta=0.01,
+            patience=10,
+            verbose=False,
+            mode="min",
+        )
+
+        callbacks = [checkpoint_callback, early_stop_callback, lr_monitor]
+        logger = TensorBoardLogger(save_dir="../tb_logs", name="Test")
+
         model = InddorModel(lr=1e-3)
         trainer = Trainer(
             accelerator=Config.accelerator,
             gpus=Config.gpus,
             max_epochs=Config.NUM_EPOCH,
-            callbacks=Config.callbacks,
-            logger=Config.logger,
+            callbacks=callbacks,
+            logger=logger,
             fast_dev_run=Config.DEV_RUN,
         )
         trainer.fit(model=model, datamodule=datamodule)
         trainer.test(model=model, datamodule=datamodule)
+
+        print(checkpoint_callback.best_model_path)
 
         break
 
