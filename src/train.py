@@ -46,9 +46,9 @@ class IndoorDataset(Dataset):
         wifi_rssi = np.load(featfure_dir / "train_wifi_rssi.npy")
         wifi_freq = np.load(featfure_dir / "train_wifi_freq.npy")
 
-        self.wifi_bssid = wifi_bssid[data_index][:, :20]
-        self.wifi_rssi = wifi_rssi[data_index][:, :20]
-        self.wifi_freq = wifi_freq[data_index][:, :20]
+        self.wifi_bssid = wifi_bssid[data_index][:, :100]
+        self.wifi_rssi = wifi_rssi[data_index][:, :100]
+        self.wifi_freq = wifi_freq[data_index][:, :100]
 
         # Beacon featurees.
         beacon_uuid = np.load(featfure_dir / "train_beacon_uuid.npy")
@@ -135,7 +135,7 @@ def main():
         datamodule = IndoorDataModule(Config.BATCH_SIZE, train_idx, valid_idx, test_idx)
         datamodule.setup()
 
-        model = InddorModel(lr=1e-2)
+        model = InddorModel(lr=1e-3)
         trainer = Trainer(
             accelerator=Config.accelerator,
             gpus=Config.gpus,

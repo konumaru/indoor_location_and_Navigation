@@ -62,7 +62,7 @@ class BuildModel(nn.Module):
 class WifiModel(nn.Module):
     def __init__(
         self,
-        seq_len: int = 20,
+        seq_len: int = 100,
         bssid_embed_dim: int = 64,
         output_dim: int = 64,
     ):
@@ -195,10 +195,10 @@ class InddorModel(LightningModule):
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         lr_scheduler = {
-            "scheduler": torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99),
+            "scheduler": torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.995),
             "name": "lr",
         }
-        return [optimizer], [lr_scheduler]
+        return [optimizer]  # , [lr_scheduler]
 
     def shared_step(self, batch):
         x, y = batch

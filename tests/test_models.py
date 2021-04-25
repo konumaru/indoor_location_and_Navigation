@@ -29,7 +29,7 @@ def get_wifi_feature(batch_size: int = 100, seq_len: int = 20):
 
 
 def test_wifi_model():
-    seq_len = 20
+    seq_len = 100
     batch_size = 100
     input_wifi = get_wifi_feature(batch_size, seq_len)
 
@@ -58,7 +58,7 @@ def test_beacon_model():
 def test_indoor_model():
     batch_size = 100
     input_build = get_build_feature(batch_size)
-    input_wifi = get_wifi_feature(batch_size)
+    input_wifi = get_wifi_feature(batch_size, seq_len=100)
     input_beacon = get_beacon_feature(batch_size)
 
     floor = torch.randint(14, size=(batch_size, 1))
