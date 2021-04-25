@@ -1,0 +1,5 @@
+../tb_logs/Baseline/version_0/checkpoints/epoch=17-trian_loss=0.0000-valid_loss=12.7808.ckpt
+../tb_logs/Baseline/version_1/checkpoints/epoch=17-trian_loss=0.0000-valid_loss=14.8985.ckpt
+../tb_logs/Baseline/version_2/checkpoints/epoch=19-trian_loss=0.0000-valid_loss=14.1933.ckpt
+../tb_logs/Baseline/version_3/checkpoints/epoch=18-trian_loss=0.0000-valid_loss=12.3275.ckpt
+../tb_logs/Baseline/version_4/checkpoints/epoch=18-trian_loss=0.0000-valid_loss=18.0084.ckpt

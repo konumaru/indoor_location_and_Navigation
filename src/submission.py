@@ -1,4 +1,5 @@
 import pathlib
+import statistics
 import numpy as np
 import pandas as pd
 from rich.progress import track
@@ -9,7 +10,9 @@ from torch.utils.data import Dataset, DataLoader
 
 from models import InddorModel
 from preprocessing import create_wifi, create_beacon
+
 from utils.feature import FeatureStore
+from utils.common import timer
 from utils.common import load_pickle, dump_pickle, save_cache
 
 
@@ -124,9 +127,9 @@ class IndoorTestDataset(Dataset):
         wifi_rssi = np.load(featfure_dir / "test_wifi_rssi.npy")
         wifi_freq = np.load(featfure_dir / "test_wifi_freq.npy")
 
-        self.wifi_bssid = wifi_bssid[:, :20]
-        self.wifi_rssi = wifi_rssi[:, :20]
-        self.wifi_freq = wifi_freq[:, :20]
+        self.wifi_bssid = wifi_bssid
+        self.wifi_rssi = wifi_rssi
+        self.wifi_freq = wifi_freq
 
         # Beacon featurees.
         beacon_uuid = np.load(featfure_dir / "test_beacon_uuid.npy")
@@ -156,6 +159,13 @@ class IndoorTestDataset(Dataset):
         return x
 
 
+def load_checkpoints(model_name: str):
+    with open(f"../checkpoints/{model_name}.txt", "r") as f:
+        checkpoints = f.readlines()
+        checkpoints = [c.strip() for c in checkpoints]
+    return checkpoints
+
+
 def main():
     # Extract raw data.
     if UPDATE_RAW_DATA:
@@ -178,26 +188,34 @@ def main():
     )
 
     # Load model and predict.
-    checkpoint = (
-        "tb_logs/Update-WifiModel/version_2/checkpoints/epoch=120-step=35452.ckpt"
-    )
-    model = InddorModel.load_from_checkpoint(f"../{checkpoint}")
-    model.eval()
-    model.freeze()
-
+    checkpoints = load_checkpoints("Baseline")
     floor = []
     postion = []
-    for batch in dataloader:
-        y_hat = model(batch)
+    for _, ckpt in enumerate(track(checkpoints)):
+        model = InddorModel.load_from_checkpoint(ckpt)
+        model.eval()
+        model.freeze()
 
-        floor.append(y_hat[0])
-        postion.append(y_hat[1])
+        _floor = []
+        _postion = []
+        for batch in dataloader:
+            y_hat = model(batch)
 
-    floor = torch.cat(floor, dim=0)
-    postion = torch.cat(postion, dim=0)
+            _floor.append(y_hat[0])
+            _postion.append(y_hat[1])
 
-    floor = floor.detach().numpy().copy().ravel()
-    postion = postion.detach().numpy().copy()
+        _floor = torch.cat(_floor, dim=0).detach().numpy().copy()
+        _postion = torch.cat(_postion, dim=0).detach().numpy().copy()
+
+        floor.append(_floor)
+        postion.append(_postion)
+
+    floor = (
+        pd.DataFrame(np.concatenate(floor, axis=1))
+        .apply(lambda x: statistics.mode(x), axis=1)
+        .to_numpy()
+    )
+    postion = np.mean(postion, axis=0)
 
     # Dump submission file.
     submission = pd.read_csv("../data/raw/sample_submission.csv")
@@ -213,4 +231,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    with timer("Submission"):
+        main()
