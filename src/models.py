@@ -73,7 +73,7 @@ class WifiModel(nn.Module):
 
         self.embed_bssid = nn.Embedding(238859 + 1, bssid_embed_dim)
         # LSTM layers.
-        n_dim_lstm = bssid_embed_dim + 2
+        n_dim_lstm = bssid_embed_dim + 3
         self.lstm_out_dim = 16
         self.lstm1 = nn.LSTM(n_dim_lstm, 128, num_layers=2, batch_first=True)
         self.lstm2 = nn.LSTM(128, self.lstm_out_dim, batch_first=True)
@@ -87,12 +87,13 @@ class WifiModel(nn.Module):
         )
 
     def forward(self, x):
-        (wifi_bssid, wifi_rssi, wifi_freq) = x
+        (wifi_bssid, wifi_rssi, wifi_freq, wifi_last_seen_ts) = x
 
         bssid_vec = self.embed_bssid(wifi_bssid)
         wifi_rssi = wifi_rssi.view(-1, self.seq_len, 1)
         wifi_freq = wifi_freq.view(-1, self.seq_len, 1)
-        x = torch.cat((bssid_vec, wifi_rssi, wifi_freq), dim=2)
+        wifi_last_seen_ts = wifi_last_seen_ts.view(-1, self.seq_len, 1)
+        x = torch.cat((bssid_vec, wifi_rssi, wifi_freq, wifi_last_seen_ts), dim=2)
 
         x, _ = self.lstm1(x)
         x, _ = self.lstm2(x)

@@ -25,7 +25,8 @@ def get_wifi_feature(batch_size: int = 100, seq_len: int = 20):
     bssid = torch.randint(100, size=(batch_size, seq_len))
     rssi = torch.rand(size=(batch_size, seq_len))
     freq = torch.rand(size=(batch_size, seq_len))
-    return (bssid, rssi, freq)
+    last_seen_ts = torch.rand(size=(batch_size, seq_len))
+    return (bssid, rssi, freq, last_seen_ts)
 
 
 def test_wifi_model():

@@ -50,7 +50,7 @@ def create_waypoint():
 # === build ===
 
 
-@save_cache("../data/preprocessing/train_build_results.pkl", False)
+@save_cache("../data/preprocessing/train_build_results.pkl", True)
 def create_build():
     def get_waypoint_from_featureStore(path_id):
         feature = load_pickle(f"../data/working/{path_id}.pkl", verbose=False)
@@ -101,6 +101,7 @@ def create_wifi(waypoint: np.ndarray, scr_dir: str = "../data/working"):
         bssid = []
         rssi = []
         freq = []
+        last_seen_ts = []
 
         for i, (_, row) in enumerate(gdf.iterrows()):
             n_diff = 1
@@ -130,20 +131,26 @@ def create_wifi(waypoint: np.ndarray, scr_dir: str = "../data/working"):
             _wifi["bssid"].fillna(0, inplace=True)
             _wifi["rssi"].fillna(-999, inplace=True)
             _wifi["frequency"].fillna(-999, inplace=True)
+            _wifi["last_seen_timestamp"].fillna(-999, inplace=True)
 
             _bssid = np.zeros(seq_len)
             _rssi = np.tile(-999, seq_len)
             _freq = np.tile(-999, seq_len)
+            _last_seen_ts = np.tile(-999, seq_len)
 
             _bssid[: len(_wifi)] = _wifi["bssid"].astype("int32").to_numpy()
             _rssi[: len(_wifi)] = _wifi["rssi"].astype("float32").to_numpy()
             _freq[: len(_wifi)] = _wifi["frequency"].astype("float32").to_numpy()
+            _last_seen_ts[: len(_wifi)] = (
+                _wifi["last_seen_timestamp"].astype("float32").to_numpy()
+            )
 
             bssid.append(_bssid)
             rssi.append(_rssi)
             freq.append(_freq)
+            last_seen_ts.append(_last_seen_ts)
 
-        return bssid, rssi, freq
+        return bssid, rssi, freq, last_seen_ts
 
     bssid_map = load_pickle("../data/label_encode/map_bssid.pkl", verbose=False)
     results = Parallel(n_jobs=-1)(
@@ -162,7 +169,7 @@ def get_wifi_results():
 
 def create_wifi_feature():
     results = get_wifi_results()
-    bssid, rssi, freq = zip(*results)
+    bssid, rssi, freq, last_seen_ts = zip(*results)
 
     def save_scaler_and_npy(data: np.ndarray, name: str):
         scaler = StandardScaler()
@@ -174,10 +181,12 @@ def create_wifi_feature():
     bssid = np.concatenate(bssid, axis=0).astype("int32")
     rssi = np.concatenate(rssi, axis=0)
     freq = np.concatenate(freq, axis=0)
+    last_seen_ts = np.concatenate(last_seen_ts, axis=0)
 
     np.save("../data/preprocessing/train_wifi_bssid.npy", bssid)
     save_scaler_and_npy(rssi, "wifi_rssi")
     save_scaler_and_npy(freq, "wifi_freq")
+    save_scaler_and_npy(last_seen_ts, "wifi_last_seen_ts")
 
 
 # === beacon ===
@@ -249,7 +258,7 @@ def create_beacon(waypoint: np.ndarray, scr_dir: str = "../data/working"):
     return results
 
 
-@save_cache("../data/preprocessing/train_beacon_results.pkl", False)
+@save_cache("../data/preprocessing/train_beacon_results.pkl", True)
 def get_beacon_results():
     waypoint = load_pickle("../data/preprocessing/train_waypoint.pkl", verbose=False)
     results = create_beacon(waypoint)
