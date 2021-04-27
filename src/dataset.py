@@ -49,7 +49,10 @@ class IndoorDataset(Dataset):
         return len(self.site_id)
 
     def __getitem__(self, idx):
-        x_build = self.site_id[idx]
+        x_build = (
+            self.site_id[idx],
+            self.floor[idx],
+        )
         x_wifi = (
             self.wifi_bssid[idx],
             self.wifi_rssi[idx],

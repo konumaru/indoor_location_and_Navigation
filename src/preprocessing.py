@@ -104,7 +104,7 @@ def create_wifi(waypoint: np.ndarray, scr_dir: str = "../data/working"):
         last_seen_ts = []
 
         for i, (_, row) in enumerate(gdf.iterrows()):
-            n_diff = 1
+            n_diff = 3
             ts_pre_wp = ts_waypoint[i - n_diff] if (i - n_diff) >= min_idx else None
             ts_post_wp = ts_waypoint[i + n_diff] if (i + n_diff) <= max_idx else None
             # NOTE: ターゲットとなるwaypointとその前後のwaypointの間にあるデータを取得する。

@@ -8,7 +8,8 @@ from src import models
 
 def get_build_feature(batch_size: int = 100):
     site_id = torch.randint(100, size=(batch_size, 1))
-    return site_id
+    floor = torch.randint(10, size=(batch_size, 1))
+    return (site_id, floor)
 
 
 def test_build_model():
@@ -71,10 +72,8 @@ def test_indoor_model():
     model = models.InddorModel()
     z = model(x)
 
-    print(z)
-
-    loss_fn = models.MeanPositionLoss()
-    loss = loss_fn(z, y)
-    # loss_fn = models.RMSELoss()
-    # loss = loss_fn(z, y[1])
-    # loss.backward()
+    # loss_fn = models.MeanPositionLoss()
+    # loss = loss_fn(z, y)
+    loss_fn = models.RMSELoss()
+    loss = loss_fn(z, y[1])
+    loss.backward()

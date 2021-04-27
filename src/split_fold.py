@@ -17,9 +17,14 @@ def main():
     le = LabelEncoder()
     wp["path"] = le.fit_transform(wp["path"])
 
-    cv = StratifiedKFold(n_splits=10, shuffle=True, random_state=Config.SEED)
-    for n_fold, (train_idx, test_idx) in enumerate(cv.split(X=wp, y=wp[["path"]])):
-        print(f"Fold {n_fold:>02}")
+    cv = StratifiedKFold(
+        n_splits=Config.NUM_FOLD, shuffle=True, random_state=Config.SEED
+    )
+    cv = GroupKFold(n_splits=Config.NUM_FOLD)
+    for n_fold, (train_idx, test_idx) in enumerate(
+        cv.split(X=wp, y=wp[["path"]], groups=wp[["path"]])
+    ):
+        print(f"\nFold {n_fold:>02}")
 
         valid_idx, test_idx = train_test_split(test_idx, test_size=0.5)
 

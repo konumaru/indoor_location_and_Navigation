@@ -30,8 +30,8 @@ class MeanPositionLoss(nn.Module):
         floor, pos = y
         floor_hat, pos_hat = y_hat
 
-        p = 1  # 15
-        diff_f = torch.abs(floor_hat - floor)
+        p = 15
+        diff_f = torch.abs(floor - floor)
         diff_x = pos_hat[:, 0] - pos[:, 0]
         diff_y = pos_hat[:, 1] - pos[:, 1]
 
@@ -47,15 +47,16 @@ class BuildModel(nn.Module):
         super(BuildModel, self).__init__()
         # TODO: floor and embed_floorを特徴量として追加する
         self.site_embed_dim = site_embed_dim
-        self.output_dim = site_embed_dim
+        self.output_dim = site_embed_dim + 1
 
         self.embed_site = nn.Embedding(205 + 1, site_embed_dim)
 
     def forward(self, x):
-        site = x[0]
+        x_site, x_floor = x
 
-        x = self.embed_site(x)
-        x = x.view(-1, self.site_embed_dim)
+        x_site = self.embed_site(x_site)
+        x_site = x_site.view(-1, self.site_embed_dim)
+        x = torch.cat((x_site, x_floor), dim=1)
         return x
 
 
@@ -64,7 +65,7 @@ class WifiModel(nn.Module):
         self,
         seq_len: int = 100,
         bssid_embed_dim: int = 64,
-        output_dim: int = 64,
+        output_dim: int = 256,
     ):
         super(WifiModel, self).__init__()
         self.seq_len = seq_len
@@ -108,7 +109,7 @@ class BeaconModel(nn.Module):
         self,
         seq_len: int = 20,
         uuid_embed_dim: int = 64,
-        output_dim: int = 64,
+        output_dim: int = 128,
     ):
         super(BeaconModel, self).__init__()
         self.seq_len = seq_len
@@ -149,7 +150,7 @@ class InddorModel(LightningModule):
         super(InddorModel, self).__init__()
         self.lr = lr
         # Define loss function.
-        self.loss_fn = MeanPositionLoss()  # RMSELoss()
+        self.loss_fn = RMSELoss()  # MeanPositionLoss, RMSELoss()
         # Each data models.
         self.model_build = BuildModel()
         self.model_wifi = WifiModel()
@@ -168,13 +169,14 @@ class InddorModel(LightningModule):
             nn.Linear(256, 64),
             nn.ReLU(),
         )
-        self.layer_floor = nn.Sequential(
-            nn.Linear(64, 64),
-            nn.Linear(64, 14),
-            nn.Softmax(dim=1),
-        )
+        # self.layer_floor = nn.Sequential(
+        #     nn.Linear(64, 64),
+        #     nn.Linear(64, 14),
+        #     nn.Softmax(dim=1),
+        # )
         self.layer_position = nn.Sequential(
             nn.Linear(64, 64),
+            nn.ReLU(),
             nn.Linear(64, 2),
         )
 
@@ -188,15 +190,15 @@ class InddorModel(LightningModule):
         x = torch.cat((x_build, x_wifi, x_beacon), dim=1)
         x = self.layers(x)
 
-        f = self.layer_floor(x)
-        f = (torch.argmax(f, axis=1) - 3).view(-1, 1)
+        # f = self.layer_floor(x)
+        # f = (torch.argmax(f, axis=1) - 3).view(-1, 1)
         pos = self.layer_position(x)
-        return (f, pos)
+        return pos
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         lr_scheduler = {
-            "scheduler": torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.995),
+            "scheduler": torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99),
             "name": "lr",
         }
         return [optimizer], [lr_scheduler]
@@ -204,7 +206,7 @@ class InddorModel(LightningModule):
     def shared_step(self, batch):
         x, y = batch
         z = self(x)
-        loss = self.loss_fn(z, y)
+        loss = self.loss_fn(z, y[1])
         return z, loss
 
     def training_step(self, batch, batch_idx):
@@ -225,9 +227,9 @@ class InddorModel(LightningModule):
         outputs = {
             "test_loss": loss,
             "floor": y[0].detach().cpu().numpy(),
-            "floor_hat": z[0].detach().cpu().numpy(),
+            "floor_hat": y[0].detach().cpu().numpy(),
             "position": y[1].detach().cpu().numpy(),
-            "position_hat": z[1].detach().cpu().numpy(),
+            "position_hat": z.detach().cpu().numpy(),
         }
         return outputs
 

@@ -1,3 +1,5 @@
+import re
+import shutil
 import pathlib
 import argparse
 import numpy as np
@@ -35,8 +37,8 @@ def get_config(mode: str):
     return config
 
 
-def dump_best_checkpoints(best_checkpoints: List, model_name: AnyStr):
-    with open(f"../checkpoints/{model_name}.txt", "w") as f:
+def dump_best_checkpoints(best_checkpoints: List, model_name: AnyStr, metric: float):
+    with open(f"../checkpoints/{model_name}_{metric}.txt", "w") as f:
         txt = "\n".join(best_checkpoints)
         f.write(txt)
 
@@ -46,12 +48,14 @@ def main():
     parser.add_argument(
         "-m", "--mode", type=str, choices=["debug", "valid", "train"], default="debug"
     )
-    parser.add_argument("-n", "--model_name", type=str, default="Debug")
+    parser.add_argument("-n", "--model_name", type=str, default="Debug", required=True)
+    parser.add_argument("-v", "--version", type=int, default=0, required=True)
     args = parser.parse_args()
 
     config = get_config(args.mode)
     pl.seed_everything(config.SEED)
 
+    metrics = []
     best_checkpoints = []
     for n_fold in range(config.NUM_FOLD):
         # Load index and select fold daata.
@@ -79,7 +83,9 @@ def main():
 
         callbacks = [checkpoint_callback, early_stop_callback, lr_monitor]
         logger = TensorBoardLogger(
-            save_dir="../tb_logs", name=args.model_name, version=n_fold
+            save_dir="../tb_logs",
+            name=args.model_name,
+            version=f"0.{args.version}.{n_fold}",
         )
 
         model = InddorModel(lr=1e-3)
@@ -96,7 +102,18 @@ def main():
 
         best_checkpoints.append(checkpoint_callback.best_model_path)
 
-    dump_best_checkpoints(best_checkpoints, args.model_name)
+        metric = float(
+            re.findall(r"valid_loss=(\d+\.\d+)", checkpoint_callback.best_model_path)[0]
+        )
+        metrics.append(metric)
+
+        if bool(config.DEV_RUN):
+            break
+        else:
+            continue
+
+    # TODO: checkpoints の以下に metric だけを出力するテキストを作って、そこにmodel_name, version, avg_metric, std_metricを吐き出す
+    dump_best_checkpoints(best_checkpoints, args.model_name, np.mean(metrics))
 
 
 if __name__ == "__main__":

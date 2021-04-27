@@ -1,0 +1,5 @@
+../tb_logs/Add-FloorFeature/0.0.0/checkpoints/epoch=16-trian_loss=0.0000-valid_loss=12.1648.ckpt
+../tb_logs/Add-FloorFeature/0.0.1/checkpoints/epoch=18-trian_loss=0.0000-valid_loss=12.0520.ckpt
+../tb_logs/Add-FloorFeature/0.0.2/checkpoints/epoch=18-trian_loss=0.0000-valid_loss=11.7616.ckpt
+../tb_logs/Add-FloorFeature/0.0.3/checkpoints/epoch=18-trian_loss=0.0000-valid_loss=11.7403.ckpt
+../tb_logs/Add-FloorFeature/0.0.4/checkpoints/epoch=15-trian_loss=0.0000-valid_loss=12.1766.ckpt

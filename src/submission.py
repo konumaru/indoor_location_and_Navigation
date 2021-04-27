@@ -56,6 +56,10 @@ def create_test_waypoint():
     waypoint.drop(["site_path_timestamp"], axis=1, inplace=True)
 
     waypoint = waypoint[["timestamp", "x", "y", "site", "floor", "path"]]
+
+    # Update floor from extend file.
+    sub = pd.read_csv("../data/extend/99_acc_submission.csv")
+    waypoint["floor"] = sub["floor"]
     return waypoint
 
 
@@ -82,15 +86,17 @@ def get_wifi_results():
 
 def create_wifi_feature():
     results = get_wifi_results()
-    bssid, rssi, freq = zip(*results)
+    bssid, rssi, freq, last_seen_ts = zip(*results)
 
     bssid = np.concatenate(bssid, axis=0).astype("int32")
     rssi = np.concatenate(rssi, axis=0)
     freq = np.concatenate(freq, axis=0)
+    last_seen_ts = np.concatenate(last_seen_ts, axis=0)
 
     np.save(f"../data/submit/test_wifi_bssid.npy", bssid)
     transform_by_scaler_and_save_npy(rssi, "wifi_rssi")
     transform_by_scaler_and_save_npy(freq, "wifi_freq")
+    transform_by_scaler_and_save_npy(last_seen_ts, "wifi_last_seen_ts")
 
 
 @save_cache("../data/submit/test_beacon_results.pkl", True)
@@ -118,6 +124,9 @@ class IndoorTestDataset(Dataset):
         # Load features.
         featfure_dir = pathlib.Path("../data/submit/")
 
+        wp = load_pickle("../data/submit/test_waypoint.pkl")
+        self.floor = wp[["floor"]].to_numpy()
+
         # Build feature.
         site_id = np.load(featfure_dir / "test_site_id.npy")
         self.site_id = site_id.reshape(-1, 1)
@@ -126,10 +135,12 @@ class IndoorTestDataset(Dataset):
         wifi_bssid = np.load(featfure_dir / "test_wifi_bssid.npy")
         wifi_rssi = np.load(featfure_dir / "test_wifi_rssi.npy")
         wifi_freq = np.load(featfure_dir / "test_wifi_freq.npy")
+        wifi_last_seen_ts = np.load(featfure_dir / "test_wifi_last_seen_ts.npy")
 
         self.wifi_bssid = wifi_bssid
         self.wifi_rssi = wifi_rssi
         self.wifi_freq = wifi_freq
+        self.wifi_last_seen_ts = wifi_last_seen_ts
 
         # Beacon featurees.
         beacon_uuid = np.load(featfure_dir / "test_beacon_uuid.npy")
@@ -144,11 +155,15 @@ class IndoorTestDataset(Dataset):
         return len(self.site_id)
 
     def __getitem__(self, idx):
-        x_build = self.site_id[idx]
+        x_build = (
+            self.site_id[idx],
+            self.floor[idx],
+        )
         x_wifi = (
             self.wifi_bssid[idx],
             self.wifi_rssi[idx],
             self.wifi_freq[idx],
+            self.wifi_last_seen_ts[idx],
         )
         x_beacon = (
             self.beacon_uuid[idx],
@@ -188,7 +203,7 @@ def main():
     )
 
     # Load model and predict.
-    checkpoints = load_checkpoints("Baseline")
+    checkpoints = load_checkpoints("Add-FloorFeature")
     floor = []
     postion = []
     for _, ckpt in enumerate(track(checkpoints)):
@@ -201,25 +216,27 @@ def main():
         for batch in dataloader:
             y_hat = model(batch)
 
-            _floor.append(y_hat[0])
-            _postion.append(y_hat[1])
+            # _floor.append(y_hat[0])
+            _postion.append(y_hat)
 
-        _floor = torch.cat(_floor, dim=0).detach().numpy().copy()
+        # _floor = torch.cat(_floor, dim=0).detach().numpy().copy()
         _postion = torch.cat(_postion, dim=0).detach().numpy().copy()
 
-        floor.append(_floor)
+        # floor.append(_floor)
         postion.append(_postion)
 
-    floor = (
-        pd.DataFrame(np.concatenate(floor, axis=1))
-        .apply(lambda x: statistics.mode(x), axis=1)
-        .to_numpy()
-    )
+        break
+
+    # floor = (
+    #     pd.DataFrame(np.concatenate(floor, axis=1))
+    #     .apply(lambda x: statistics.mode(x), axis=1)
+    #     .to_numpy()
+    # )
     postion = np.mean(postion, axis=0)
 
     # Dump submission file.
     submission = pd.read_csv("../data/raw/sample_submission.csv")
-    submission.iloc[:, 1] = floor
+    # submission.iloc[:, 1] = floor
     submission.iloc[:, 2:] = postion
     print(submission.head())
     print(submission["floor"].value_counts().sort_index())
