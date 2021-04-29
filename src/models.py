@@ -29,7 +29,7 @@ class RMSELoss(nn.Module):
     def forward(self, y_hat, y):
         diff_x = y_hat[:, 0] - y[:, 0]
         diff_y = y_hat[:, 1] - y[:, 1]
-        error = torch.sqrt(diff_x ** 2 + diff_y ** 2)
+        error = torch.sqrt(torch.pow(diff_x, 2) + torch.pow(diff_y, 2))
         return torch.mean(error)
 
 
@@ -85,7 +85,7 @@ class WifiModel(nn.Module):
 
         self.embed_bssid = nn.Embedding(238859 + 1, bssid_embed_dim)
         # LSTM layers.
-        n_dim_lstm = bssid_embed_dim + 2
+        n_dim_lstm = bssid_embed_dim + 2 + 65
         self.lstm_out_dim = 128
         self.lstm1 = nn.LSTM(n_dim_lstm, 256, num_layers=2, batch_first=True)
         self.lstm2 = nn.LSTM(256, self.lstm_out_dim, batch_first=True)
@@ -98,7 +98,8 @@ class WifiModel(nn.Module):
             nn.PReLU(),
         )
 
-    def forward(self, x):
+    def forward(self, x, x_build):
+        x_build = torch.tile(x_build, dims=(1, 100)).reshape(-1, 100, 65)
         (wifi_bssid, wifi_rssi, wifi_freq, wifi_last_seen_ts) = x
 
         bssid_vec = self.embed_bssid(wifi_bssid)
@@ -106,7 +107,7 @@ class WifiModel(nn.Module):
         wifi_freq = wifi_freq.view(-1, self.seq_len, 1)
         # wifi_last_seen_ts = wifi_last_seen_ts.view(-1, self.seq_len, 1)
         # x = torch.cat((bssid_vec, wifi_rssi, wifi_freq, wifi_last_seen_ts), dim=2)
-        x = torch.cat((bssid_vec, wifi_rssi, wifi_freq), dim=2)
+        x = torch.cat((bssid_vec, wifi_rssi, wifi_freq, x_build), dim=2)
 
         x, _ = self.lstm1(x)
         x, _ = self.lstm2(x)
@@ -197,7 +198,7 @@ class InddorModel(LightningModule):
         x_build, x_wifi, x_beacon = x
 
         x_build = self.model_build(x_build)
-        x_wifi = self.model_wifi(x_wifi)
+        x_wifi = self.model_wifi(x_wifi, x_build)
         x_beacon = self.model_beacon(x_beacon)
 
         x = torch.cat((x_build, x_wifi, x_beacon), dim=1)

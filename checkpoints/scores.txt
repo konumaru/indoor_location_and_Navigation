@@ -1,2 +1,6 @@
 Change-WifiFeature    1 18.6501
 Change-WifiFeature    2 18.2346
+
+Change-WifiFeature    3 18.4192
+Change-WifiFeature    4 18.4361
+Update-WifiModelAddedSite    0 18.5957

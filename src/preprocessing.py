@@ -167,7 +167,7 @@ def create_wifi(waypoint: np.ndarray, scr_dir: str = "../data/working"):
     return results
 
 
-@save_cache("../data/preprocessing/train_wifi_results.pkl", False)
+@save_cache("../data/preprocessing/train_wifi_results.pkl", True)
 def get_wifi_results():
     waypoint = load_pickle("../data/preprocessing/train_waypoint.pkl", verbose=False)
     results = create_wifi(waypoint)
@@ -180,8 +180,8 @@ def create_wifi_feature():
 
     def save_scaler_and_npy(data: np.ndarray, name: str):
         scaler = StandardScaler()
-        data = scaler.fit_transform(data)
-        data = data.astype("float32")
+        data = scaler.fit_transform(data.reshape(-1, 1))
+        data = data.astype("float32").reshape(-1, 100)
         dump_pickle(f"../data/scaler/scaler_{name}.pkl", scaler)
         np.save(f"../data/preprocessing/train_{name}.npy", data)
 
@@ -269,7 +269,7 @@ def create_beacon(waypoint: np.ndarray, scr_dir: str = "../data/working"):
     return results
 
 
-@save_cache("../data/preprocessing/train_beacon_results.pkl", False)
+@save_cache("../data/preprocessing/train_beacon_results.pkl", True)
 def get_beacon_results():
     waypoint = load_pickle("../data/preprocessing/train_waypoint.pkl", verbose=False)
     results = create_beacon(waypoint)
@@ -282,8 +282,8 @@ def create_beacon_feature():
 
     def save_scaler_and_npy(data: np.ndarray, name: str):
         scaler = StandardScaler()
-        data = scaler.fit_transform(data)
-        data = data.astype("float32")
+        data = scaler.fit_transform(data.reshape(-1, 1))
+        data = data.astype("float32").reshape(-1, 20)
         dump_pickle(f"../data/scaler/scaler_{name}.pkl", scaler)
         np.save(f"../data/preprocessing/train_{name}.npy", data)
 

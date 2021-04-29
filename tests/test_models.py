@@ -33,10 +33,15 @@ def get_wifi_feature(batch_size: int = 100, seq_len: int = 20):
 def test_wifi_model():
     seq_len = 100
     batch_size = 100
+
+    input_build = get_build_feature(batch_size)
+    model = models.BuildModel()
+    x_build = model(input_build)
+
     input_wifi = get_wifi_feature(batch_size, seq_len)
 
     model = models.WifiModel()
-    z = model(input_wifi)
+    z = model(input_wifi, x_build)
 
     assert z.size(0) == batch_size
 

@@ -40,10 +40,10 @@ def extract_raw_data():
         feature.save()
 
 
-def transform_by_scaler_and_save_npy(data: np.ndarray, name: str):
+def transform_by_scaler_and_save_npy(data: np.ndarray, name: str, seq_len: int):
     scaler = load_pickle(f"../data/scaler/scaler_{name}.pkl")
-    data = scaler.transform(data)
-    data = data.astype("float32")
+    data = scaler.transform(data.reshape(-1, 1))
+    data = data.astype("float32").reshape(-1, seq_len)
     np.save(f"../data/submit/test_{name}.npy", data)
 
 
@@ -65,10 +65,6 @@ def create_test_waypoint():
 
 @save_cache("../data/submit/test_site_id.pkl", True)
 def create_test_build():
-    def get_waypoint_from_featureStore(path_id):
-        feature = load_pickle(f"../data/submit/path_data/{path_id}.pkl", verbose=False)
-        return site_map[feature.site_id]
-
     waypoint = load_pickle("../data/submit/test_waypoint.pkl", verbose=False)
     site_map = load_pickle("../data/label_encode/map_site_id.pkl", verbose=False)
     build = waypoint["site"].map(site_map).to_numpy()
@@ -77,7 +73,7 @@ def create_test_build():
     return build
 
 
-@save_cache("../data/submit/test_wifi_results.pkl", False)
+@save_cache("../data/submit/test_wifi_results.pkl", True)
 def get_wifi_results():
     waypoint = load_pickle("../data/submit/test_waypoint.pkl", verbose=False)
     results = create_wifi(waypoint, "../data/submit/path_data")
@@ -94,12 +90,12 @@ def create_wifi_feature():
     last_seen_ts = np.concatenate(last_seen_ts, axis=0)
 
     np.save(f"../data/submit/test_wifi_bssid.npy", bssid)
-    transform_by_scaler_and_save_npy(rssi, "wifi_rssi")
-    transform_by_scaler_and_save_npy(freq, "wifi_freq")
-    transform_by_scaler_and_save_npy(last_seen_ts, "wifi_last_seen_ts")
+    transform_by_scaler_and_save_npy(rssi, "wifi_rssi", 100)
+    transform_by_scaler_and_save_npy(freq, "wifi_freq", 100)
+    transform_by_scaler_and_save_npy(last_seen_ts, "wifi_last_seen_ts", 100)
 
 
-@save_cache("../data/submit/test_beacon_results.pkl", False)
+@save_cache("../data/submit/test_beacon_results.pkl", True)
 def get_beacon_results():
     waypoint = load_pickle("../data/submit/test_waypoint.pkl", verbose=False)
     results = create_beacon(waypoint, "../data/submit/path_data")
@@ -114,9 +110,9 @@ def create_beacon_feature():
     tx_power = np.concatenate(tx_power, axis=0)
     rssi = np.concatenate(rssi, axis=0)
 
-    np.save(f"../data/submit/test_beacon_uuid.npy", uuid)
-    transform_by_scaler_and_save_npy(tx_power, "beacon_tx_power")
-    transform_by_scaler_and_save_npy(rssi, "beacon_rssi")
+    np.save("../data/submit/test_beacon_uuid.npy", uuid)
+    transform_by_scaler_and_save_npy(tx_power, "beacon_tx_power", 20)
+    transform_by_scaler_and_save_npy(rssi, "beacon_rssi", 20)
 
 
 class IndoorTestDataset(Dataset):
@@ -203,7 +199,7 @@ def main():
     )
 
     # Load model and predict.
-    checkpoints = load_checkpoints("Change-WifiFeature")
+    checkpoints = load_checkpoints("Update-WifiModelAddedSite")
     floor = []
     postion = []
     for _, ckpt in enumerate(track(checkpoints)):
