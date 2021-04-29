@@ -11,6 +11,17 @@ import pytorch_lightning as pl
 from pytorch_lightning import LightningModule
 
 
+class MSELoss(nn.Module):
+    def __init__(self):
+        super(MSELoss, self).__init__()
+
+    def forward(self, y_hat, y):
+        diff_x = torch.abs(y_hat[:, 0] - y[:, 0])
+        diff_y = torch.abs(y_hat[:, 1] - y[:, 1])
+        error = diff_x + diff_y
+        return torch.mean(error)
+
+
 class RMSELoss(nn.Module):
     def __init__(self):
         super(RMSELoss, self).__init__()
@@ -119,8 +130,8 @@ class BeaconModel(nn.Module):
         # LSTM layers.
         n_dim_lstm = uuid_embed_dim + 2
         self.lstm_out_dim = 16
-        self.lstm1 = nn.LSTM(n_dim_lstm, 128, num_layers=2, batch_first=True)
-        self.lstm2 = nn.LSTM(128, self.lstm_out_dim, batch_first=True)
+        self.lstm1 = nn.LSTM(n_dim_lstm, 256, num_layers=2, batch_first=True)
+        self.lstm2 = nn.LSTM(256, self.lstm_out_dim, batch_first=True)
 
         self.layers = nn.Sequential(
             nn.BatchNorm1d(seq_len * self.lstm_out_dim),
@@ -150,7 +161,8 @@ class InddorModel(LightningModule):
         super(InddorModel, self).__init__()
         self.lr = lr
         # Define loss function.
-        self.loss_fn = RMSELoss()  # MeanPositionLoss, RMSELoss()
+        self.loss_fn = MSELoss()  # MeanPositionLoss, RMSELoss()
+        self.eval_fn = RMSELoss()
         # Each data models.
         self.model_build = BuildModel()
         self.model_wifi = WifiModel()
@@ -203,57 +215,65 @@ class InddorModel(LightningModule):
         }
         return [optimizer], [lr_scheduler]
 
-    def shared_step(self, batch):
+    def shared_step(self, batch, step_name):
         x, y = batch
         z = self(x)
         loss = self.loss_fn(z, y[1])
-        return z, loss
+        outputs = {"y": y, "z": z}
+        self.log(f"{step_name}_loss", loss)
+        return loss, outputs
+
+    def shared_epoch_end(self, outputs, name):
+        floor = torch.cat([out["outputs"]["y"][0] for out in outputs], dim=0)
+        pos = torch.cat([out["outputs"]["y"][1] for out in outputs], dim=0)
+        pos_hat = torch.cat([out["outputs"]["z"] for out in outputs], dim=0)
+        metric = self.eval_fn(pos, pos_hat)
+        self.log(f"{name}_metric", metric, prog_bar=True)
+        return floor, pos, pos_hat
 
     def training_step(self, batch, batch_idx):
-        _, loss = self.shared_step(batch)
-        self.log("train_loss", loss)
-        return {"loss": loss}
+        loss, outputs = self.shared_step(batch, "train")
+        return {"loss": loss, "outputs": outputs}
 
-    def validation_step(self, batch, batch_idx):
-        _, loss = self.shared_step(batch)
-        self.log("valid_loss", loss)
-        return {"loss": loss}
-
-    def test_step(self, batch, batch_idx):
-        x, y = batch
-        z, loss = self.shared_step(batch)
-        self.log("test_loss", loss)
-
-        outputs = {
-            "test_loss": loss,
-            "floor": y[0].detach().cpu().numpy(),
-            "floor_hat": y[0].detach().cpu().numpy(),
-            "position": y[1].detach().cpu().numpy(),
-            "position_hat": z.detach().cpu().numpy(),
-        }
+    def training_step_end(self, outputs):
         return outputs
 
-    def test_epoch_end(self, test_outputs):
-        floor = np.concatenate([output["floor"] for output in test_outputs], axis=0)
-        floor_hat = np.concatenate(
-            [output["floor_hat"] for output in test_outputs], axis=0
-        )
-        position = np.concatenate(
-            [output["position"] for output in test_outputs], axis=0
-        )
-        position_hat = np.concatenate(
-            [output["position_hat"] for output in test_outputs], axis=0
-        )
+    def training_epoch_end(self, outputs):
+        _ = self.shared_epoch_end(outputs, "train")
+
+    def validation_step(self, batch, batch_idx):
+        loss, outputs = self.shared_step(batch, "valid")
+        return {"valid_loss": loss, "outputs": outputs}
+
+    def validation_step_end(self, outputs):
+        return outputs
+
+    def validation_epoch_end(self, outputs):
+        _ = self.shared_epoch_end(outputs, "valid")
+
+    def test_step(self, batch, batch_idx):
+        loss, outputs = self.shared_step(batch, "test")
+        return {"test_loss": loss, "outputs": outputs}
+
+    def test_step_end(self, outputs):
+        return outputs
+
+    def test_epoch_end(self, outputs):
+        floor, pos, pos_hat = self.shared_epoch_end(outputs, "test")
+
+        floor = floor.detach().cpu().numpy()
+        pos = pos.detach().cpu().numpy()
+        pos_hat = pos_hat.detach().cpu().numpy()
 
         # Save plot of floor count.
         # https://pytorch-lightning.readthedocs.io/en/latest/common/loggers.html#tensorboard
-        figure = self.floor_bar_plot(floor, floor_hat)
+        figure = self.floor_bar_plot(floor, floor)
         self.logger.experiment.add_figure("floor_cnt", figure, 0)
         # Save plot of position distribution.
-        self.logger.experiment.add_histogram("x", position[:, 0], 0)
-        self.logger.experiment.add_histogram("x_hat", position_hat[:, 0], 0)
-        self.logger.experiment.add_histogram("y", position[:, 1], 0)
-        self.logger.experiment.add_histogram("y_hat", position_hat[:, 1], 0)
+        self.logger.experiment.add_histogram("x", pos[:, 0], 0)
+        self.logger.experiment.add_histogram("x_hat", pos_hat[:, 0], 0)
+        self.logger.experiment.add_histogram("y", pos[:, 1], 0)
+        self.logger.experiment.add_histogram("y_hat", pos_hat[:, 1], 0)
 
     def floor_bar_plot(self, floor, floor_hat):
         idx_all = np.arange(14) - 3

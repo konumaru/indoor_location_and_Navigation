@@ -37,8 +37,14 @@ def get_config(mode: str):
     return config
 
 
-def dump_best_checkpoints(best_checkpoints: List, model_name: AnyStr, metric: float):
-    with open(f"../checkpoints/{model_name}_{metric}.txt", "w") as f:
+def dump_cv_metric(model_name: str, version: int, metric: float):
+    with open("../checkpoints/scores.txt", "w") as f:
+        txt = f"{model_name: >12} {str(version): >4} {metric:.4f}"
+        f.write(txt)
+
+
+def dump_best_checkpoints(best_checkpoints: List, model_name: AnyStr):
+    with open(f"../checkpoints/{model_name}.txt", "w") as f:
         txt = "\n".join(best_checkpoints)
         f.write(txt)
 
@@ -102,18 +108,18 @@ def main():
 
         best_checkpoints.append(checkpoint_callback.best_model_path)
 
-        metric = float(
-            re.findall(r"valid_loss=(\d+\.\d+)", checkpoint_callback.best_model_path)[0]
-        )
-        metrics.append(metric)
-
         if bool(config.DEV_RUN):
             break
         else:
-            continue
+            metric = float(
+                re.findall(
+                    r"valid_loss=(\d+\.\d+)", checkpoint_callback.best_model_path
+                )[0]
+            )
+            metrics.append(metric)
 
-    # TODO: checkpoints の以下に metric だけを出力するテキストを作って、そこにmodel_name, version, avg_metric, std_metricを吐き出す
-    dump_best_checkpoints(best_checkpoints, args.model_name, np.mean(metrics))
+    dump_cv_metric(args.model_name, args.version, np.mean(metrics))
+    dump_best_checkpoints(best_checkpoints, args.model_name)
 
 
 if __name__ == "__main__":
