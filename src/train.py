@@ -38,8 +38,8 @@ def get_config(mode: str):
 
 
 def dump_cv_metric(model_name: str, version: int, metric: float):
-    with open("../checkpoints/scores.txt", "w") as f:
-        txt = f"{model_name: >12} {str(version): >4} {metric:.4f}"
+    with open("../checkpoints/scores.txt", "a") as f:
+        txt = f"\n{model_name: >12} {str(version): >4} {metric:.4f}"
         f.write(txt)
 
 
@@ -81,7 +81,6 @@ def main():
         lr_monitor = LearningRateMonitor(logging_interval="step")
         early_stop_callback = EarlyStopping(
             monitor="valid_loss",
-            min_delta=0.01,
             patience=10,
             verbose=False,
             mode="min",

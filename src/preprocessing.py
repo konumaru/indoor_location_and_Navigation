@@ -104,23 +104,30 @@ def create_wifi(waypoint: np.ndarray, scr_dir: str = "../data/working"):
         last_seen_ts = []
 
         for i, (_, row) in enumerate(gdf.iterrows()):
-            n_diff = 3
-            ts_pre_wp = ts_waypoint[i - n_diff] if (i - n_diff) >= min_idx else None
-            ts_post_wp = ts_waypoint[i + n_diff] if (i + n_diff) <= max_idx else None
-            # NOTE: ターゲットとなるwaypointとその前後のwaypointの間にあるデータを取得する。
-            ts_wifi = wifi["timestamp"].to_numpy()
-            pre_flag = (
-                np.ones(len(ts_wifi)).astype(bool)
-                if ts_pre_wp is None
-                else (int(ts_pre_wp) < ts_wifi)
+            # n_diff = 3
+            # ts_pre_wp = ts_waypoint[i - n_diff] if (i - n_diff) >= min_idx else None
+            # ts_post_wp = ts_waypoint[i + n_diff] if (i + n_diff) <= max_idx else None
+            # # NOTE: ターゲットとなるwaypointとその前後のwaypointの間にあるデータを取得する。
+            # ts_wifi = wifi["timestamp"].to_numpy()
+            # pre_flag = (
+            #     np.ones(len(ts_wifi)).astype(bool)
+            #     if ts_pre_wp is None
+            #     else (int(ts_pre_wp) < ts_wifi)
+            # )
+            # psot_flag = (
+            #     np.ones(len(ts_wifi)).astype(bool)
+            #     if ts_post_wp is None
+            #     else (ts_wifi < int(ts_post_wp))
+            # )
+            # _wifi = wifi[pre_flag & psot_flag].copy()
+
+            ts_threshold = 3000
+            ts_diff = np.abs(wifi["timestamp"].astype(int) - int(row["timestamp"]))
+            _wifi = wifi[ts_diff <= ts_threshold].copy()
+
+            _wifi.sort_values(
+                by=["rssi", "last_seen_timestamp"], ascending=False, inplace=True
             )
-            psot_flag = (
-                np.ones(len(ts_wifi)).astype(bool)
-                if ts_post_wp is None
-                else (ts_wifi < int(ts_post_wp))
-            )
-            _wifi = wifi[pre_flag & psot_flag].copy()
-            _wifi.sort_values(by="rssi", ascending=False, inplace=True)
             _wifi.drop_duplicates(
                 subset=["bssid", "rssi", "frequency", "last_seen_timestamp"],
                 keep="first",
@@ -208,25 +215,29 @@ def create_beacon(waypoint: np.ndarray, scr_dir: str = "../data/working"):
         rssi = []
 
         for i, (_, row) in enumerate(gdf.iterrows()):
-            n_diff = 1
-            ts_pre_wp = ts_waypoint[i - n_diff] if (i - n_diff) >= min_idx else None
-            ts_post_wp = ts_waypoint[i + n_diff] if (i + n_diff) <= max_idx else None
+            # n_diff = 1
+            # ts_pre_wp = ts_waypoint[i - n_diff] if (i - n_diff) >= min_idx else None
+            # ts_post_wp = ts_waypoint[i + n_diff] if (i + n_diff) <= max_idx else None
 
-            # NOTE: ターゲットとなるwaypointとその前後のwaypointの間にあるデータを取得する。
-            ts_data = data["timestamp"].to_numpy()
-            pre_flag = (
-                np.ones(len(ts_data)).astype(bool)
-                if ts_pre_wp == None
-                else (int(ts_pre_wp) < ts_data)
-            )
-            psot_flag = (
-                np.ones(len(ts_data)).astype(bool)
-                if ts_post_wp == None
-                else (ts_data < int(ts_post_wp))
-            )
+            # # NOTE: ターゲットとなるwaypointとその前後のwaypointの間にあるデータを取得する。
+            # ts_data = data["timestamp"].to_numpy()
+            # pre_flag = (
+            #     np.ones(len(ts_data)).astype(bool)
+            #     if ts_pre_wp == None
+            #     else (int(ts_pre_wp) < ts_data)
+            # )
+            # psot_flag = (
+            #     np.ones(len(ts_data)).astype(bool)
+            #     if ts_post_wp == None
+            #     else (ts_data < int(ts_post_wp))
+            # )
+            # _data = data[pre_flag & psot_flag].copy()
 
-            _data = data[pre_flag & psot_flag].copy()
-            _data.sort_values(by="rssi", ascending=False, inplace=True)
+            ts_threshold = 3000
+            ts_diff = np.abs(data["timestamp"].astype(int) - int(row["timestamp"]))
+            _data = data[ts_diff <= ts_threshold].copy()
+
+            _data.sort_values(by=["rssi", "timestamp"], ascending=False, inplace=True)
             _data.drop_duplicates(
                 subset=["uuid", "tx_power", "rssi"], keep="first", inplace=True
             )
@@ -258,7 +269,7 @@ def create_beacon(waypoint: np.ndarray, scr_dir: str = "../data/working"):
     return results
 
 
-@save_cache("../data/preprocessing/train_beacon_results.pkl", True)
+@save_cache("../data/preprocessing/train_beacon_results.pkl", False)
 def get_beacon_results():
     waypoint = load_pickle("../data/preprocessing/train_waypoint.pkl", verbose=False)
     results = create_beacon(waypoint)

@@ -1,5 +1,0 @@
-../tb_logs/Add-lastSeenTS/version_0/checkpoints/epoch=19-trian_loss=0.0000-valid_loss=15.3046.ckpt
-../tb_logs/Add-lastSeenTS/version_1/checkpoints/epoch=13-trian_loss=0.0000-valid_loss=17.0894.ckpt
-../tb_logs/Add-lastSeenTS/version_2/checkpoints/epoch=19-trian_loss=0.0000-valid_loss=13.0255.ckpt
-../tb_logs/Add-lastSeenTS/version_3/checkpoints/epoch=16-trian_loss=0.0000-valid_loss=18.6753.ckpt
-../tb_logs/Add-lastSeenTS/version_4/checkpoints/epoch=19-trian_loss=0.0000-valid_loss=14.2528.ckpt
