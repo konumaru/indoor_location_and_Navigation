@@ -47,7 +47,7 @@ def transform_by_scaler_and_save_npy(data: np.ndarray, name: str, seq_len: int):
     np.save(f"../data/submit/test_{name}.npy", data)
 
 
-@save_cache("../data/submit/test_waypoint.pkl", True)
+@save_cache("../data/submit/test_waypoint.pkl", False)
 def create_test_waypoint():
     waypoint = pd.read_csv("../data/raw/sample_submission.csv")
     waypoint[["site", "path", "timestamp"]] = waypoint["site_path_timestamp"].str.split(
@@ -89,7 +89,7 @@ def create_wifi_feature():
     freq = np.concatenate(freq, axis=0)
     last_seen_ts = np.concatenate(last_seen_ts, axis=0)
 
-    np.save(f"../data/submit/test_wifi_bssid.npy", bssid)
+    np.save("../data/submit/test_wifi_bssid.npy", bssid)
     transform_by_scaler_and_save_npy(rssi, "wifi_rssi", 100)
     transform_by_scaler_and_save_npy(freq, "wifi_freq", 100)
     transform_by_scaler_and_save_npy(last_seen_ts, "wifi_last_seen_ts", 100)
@@ -199,7 +199,7 @@ def main():
     )
 
     # Load model and predict.
-    checkpoints = load_checkpoints("Update-WifiModelAddedSite")
+    checkpoints = load_checkpoints("Update-WifiModelLSTMLayer")
     floor = []
     postion = []
     for _, ckpt in enumerate(track(checkpoints)):

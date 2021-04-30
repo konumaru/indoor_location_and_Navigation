@@ -117,6 +117,48 @@ class WifiModel(nn.Module):
         return x
 
 
+class TmpWifiModel(nn.Module):
+    def __init__(
+        self,
+        seq_len: int = 100,
+        bssid_embed_dim: int = 64,
+        output_dim: int = 128,
+    ):
+        super(TmpWifiModel, self).__init__()
+        self.seq_len = seq_len
+        self.bssid_embed_dim = bssid_embed_dim
+        self.output_dim = output_dim
+
+        self.embed_bssid = nn.Embedding(238859 + 1, bssid_embed_dim)
+
+        self.layers = nn.Sequential(
+            nn.BatchNorm1d(6665),
+            nn.Linear(6665, 512),
+            nn.PReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(512, 256),
+            nn.PReLU(),
+            nn.Dropout(0.3),
+        )
+
+        self.lstm1 = nn.LSTM(256, 256, num_layers=2)
+        self.lstm2 = nn.LSTM(256, self.output_dim)
+
+    def forward(self, x, x_build):
+        (wifi_bssid, wifi_rssi, wifi_freq, wifi_last_seen_ts) = x
+
+        bssid_vec = self.embed_bssid(wifi_bssid)
+        bssid_vec = bssid_vec.view(-1, self.seq_len * self.bssid_embed_dim)
+        x = torch.cat((bssid_vec, wifi_rssi, wifi_freq, x_build), dim=1)
+
+        x = self.layers(x)
+        x = x.view(-1, 1, 256)
+        x, _ = self.lstm1(x)
+        x, _ = self.lstm2(x)
+        x = x.view(-1, self.output_dim)
+        return x
+
+
 class BeaconModel(nn.Module):
     def __init__(
         self,
@@ -163,17 +205,17 @@ class InddorModel(LightningModule):
         super(InddorModel, self).__init__()
         self.lr = lr
         # Define loss function.
-        self.loss_fn = MSELoss()  # MeanPositionLoss, RMSELoss()
+        self.loss_fn = RMSELoss()  # MeanPositionLoss, RMSELoss, MSELoss
         self.eval_fn = RMSELoss()
         # Each data models.
         self.model_build = BuildModel()
-        self.model_wifi = WifiModel()
+        self.model_wifi = TmpWifiModel()
         self.model_beacon = BeaconModel()
 
         input_dim = (
             self.model_build.output_dim
             + self.model_wifi.output_dim
-            + self.model_beacon.output_dim
+            # + self.model_beacon.output_dim
         )
 
         self.layers = nn.Sequential(
@@ -201,7 +243,14 @@ class InddorModel(LightningModule):
         x_wifi = self.model_wifi(x_wifi, x_build)
         x_beacon = self.model_beacon(x_beacon)
 
-        x = torch.cat((x_build, x_wifi, x_beacon), dim=1)
+        x = torch.cat(
+            (
+                x_build,
+                x_wifi,
+                # x_beacon,
+            ),
+            dim=1,
+        )
         x = self.layers(x)
 
         # f = self.layer_floor(x)
@@ -215,7 +264,7 @@ class InddorModel(LightningModule):
             "scheduler": torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99),
             "name": "lr",
         }
-        return [optimizer], [lr_scheduler]
+        return [optimizer]  # , [lr_scheduler]
 
     def shared_step(self, batch, step_name):
         x, y = batch

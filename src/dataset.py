@@ -99,7 +99,7 @@ class IndoorDataModule(pl.LightningDataModule):
             batch_size=self.batch_size,
             num_workers=8,
             pin_memory=True,
-            drop_last=True,
+            drop_last=False,
         )
 
     def test_dataloader(self):

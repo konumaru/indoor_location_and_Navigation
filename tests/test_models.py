@@ -40,7 +40,8 @@ def test_wifi_model():
 
     input_wifi = get_wifi_feature(batch_size, seq_len)
 
-    model = models.WifiModel()
+    # model = models.WifiModel()
+    model = models.TmpWifiModel()
     z = model(input_wifi, x_build)
 
     assert z.size(0) == batch_size

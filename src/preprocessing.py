@@ -125,9 +125,7 @@ def create_wifi(waypoint: np.ndarray, scr_dir: str = "../data/working"):
             ts_diff = np.abs(wifi["timestamp"].astype(int) - int(row["timestamp"]))
             _wifi = wifi[ts_diff <= ts_threshold].copy()
 
-            _wifi.sort_values(
-                by=["rssi", "last_seen_timestamp"], ascending=False, inplace=True
-            )
+            _wifi.sort_values(by=["last_seen_timestamp"], ascending=False, inplace=True)
             _wifi.drop_duplicates(
                 subset=["bssid", "rssi", "frequency", "last_seen_timestamp"],
                 keep="first",
@@ -167,7 +165,7 @@ def create_wifi(waypoint: np.ndarray, scr_dir: str = "../data/working"):
     return results
 
 
-@save_cache("../data/preprocessing/train_wifi_results.pkl", True)
+@save_cache("../data/preprocessing/train_wifi_results.pkl", False)
 def get_wifi_results():
     waypoint = load_pickle("../data/preprocessing/train_waypoint.pkl", verbose=False)
     results = create_wifi(waypoint)
@@ -237,7 +235,7 @@ def create_beacon(waypoint: np.ndarray, scr_dir: str = "../data/working"):
             ts_diff = np.abs(data["timestamp"].astype(int) - int(row["timestamp"]))
             _data = data[ts_diff <= ts_threshold].copy()
 
-            _data.sort_values(by=["rssi", "timestamp"], ascending=False, inplace=True)
+            _data.sort_values(by=["timestamp"], ascending=False, inplace=True)
             _data.drop_duplicates(
                 subset=["uuid", "tx_power", "rssi"], keep="first", inplace=True
             )
@@ -269,7 +267,7 @@ def create_beacon(waypoint: np.ndarray, scr_dir: str = "../data/working"):
     return results
 
 
-@save_cache("../data/preprocessing/train_beacon_results.pkl", True)
+@save_cache("../data/preprocessing/train_beacon_results.pkl", False)
 def get_beacon_results():
     waypoint = load_pickle("../data/preprocessing/train_waypoint.pkl", verbose=False)
     results = create_beacon(waypoint)

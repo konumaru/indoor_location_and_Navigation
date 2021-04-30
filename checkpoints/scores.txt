@@ -4,3 +4,6 @@ Change-WifiFeature    2 18.2346
 Change-WifiFeature    3 18.4192
 Change-WifiFeature    4 18.4361
 Update-WifiModelAddedSite    0 18.5957
+Update-WifiModelLSTMLayer    0 21.9559
+Update-WifiModelLSTMLayer    0 13.9000
+Update-WifiModelLSTMLayer    1 21.7447
