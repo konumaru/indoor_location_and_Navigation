@@ -16,7 +16,7 @@ class IndoorDataset(Dataset):
 
         # Target, waypoint
         wp = load_pickle(featfure_dir / "train_waypoint.pkl", verbose=False)
-        floor = wp[["floor"]].to_numpy().astype("int64")
+        floor = wp[["floor"]].to_numpy().astype("int64") + 3
         position = wp[["x", "y"]].to_numpy().astype("float32")
         self.floor = floor[data_index]
         self.position = position[data_index]

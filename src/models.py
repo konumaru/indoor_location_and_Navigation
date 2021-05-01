@@ -221,7 +221,7 @@ class InddorModel(LightningModule):
         self.layer_floor = nn.Sequential(
             nn.Linear(64, 64),
             nn.ReLU(),
-            nn.Linear(64, 17),
+            nn.Linear(64, 14),
         )
         self.layer_position = nn.Sequential(
             nn.Linear(64, 64),

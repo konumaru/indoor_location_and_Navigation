@@ -2,7 +2,14 @@ import pathlib
 import numpy as np
 
 from sklearn.preprocessing import LabelEncoder
-from sklearn.model_selection import train_test_split, KFold, GroupKFold, StratifiedKFold
+from sklearn.model_selection import (
+    train_test_split,
+    KFold,
+    StratifiedKFold,
+    StratifiedShuffleSplit,
+    GroupKFold,
+    GroupShuffleSplit,
+)
 
 from utils.common import timer
 from utils.common import load_pickle, dump_pickle

@@ -74,7 +74,7 @@ def main():
         datamodule.setup()
 
         checkpoint_callback = ModelCheckpoint(
-            filename="{epoch:02d}-{trian_loss:.4f}-{valid_loss:.4f}",
+            filename="{epoch:02d}-{trian_loss:.4f}-{valid_loss:.4f}-{test_metric:.4f}",
             monitor="valid_loss",
             mode="min",
         )
@@ -112,7 +112,7 @@ def main():
         else:
             metric = float(
                 re.findall(
-                    r"valid_loss=(\d+\.\d+)", checkpoint_callback.best_model_path
+                    r"test_metric=(\d+\.\d+)", checkpoint_callback.best_model_path
                 )[0]
             )
             metrics.append(metric)
