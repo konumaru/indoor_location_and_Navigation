@@ -89,22 +89,22 @@ def test_beacon_model():
 
 
 def test_indoor_model():
-    batch_size = 100
+    batch_size = 32
     input_build = get_build_feature(batch_size)
-    input_wifi = get_wifi_feature(batch_size, seq_len=100)
+    input_wifi = get_wifi_feature(batch_size, seq_len=20)
     input_beacon = get_beacon_feature(batch_size)
 
-    floor = torch.randint(14, size=(batch_size, 1))
+    floor = torch.randint(14, size=(batch_size,))
     waypoint = torch.rand(size=(batch_size, 2))
 
     x = (input_build, input_wifi, input_beacon)
     y = (floor, waypoint)
 
-    model = models.InddorModel()
+    model = models.InddorModel(wifi_seq_len=20)
     floor_hat, pos_hat = model(x)
 
     loss_fn = models.MeanAbsolutePositionLoss()
-    loss = loss_fn(pos_hat, y[1], floor_hat, torch.flatten(y[0]))
+    loss = loss_fn(pos_hat, y[1], floor_hat, y[0])
     loss.backward()
 
     eval_fn = models.MeanPositionLoss()

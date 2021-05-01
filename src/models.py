@@ -195,20 +195,19 @@ class BeaconModel(nn.Module):
 
 
 class InddorModel(LightningModule):
-    def __init__(self, lr: float = 1e-3):
+    def __init__(self, lr: float = 1e-3, wifi_seq_len: int = 100):
         super(InddorModel, self).__init__()
         self.lr = lr
         # Define loss function.
         self.loss_fn = MeanAbsolutePositionLoss()
         self.eval_fn = MeanPositionLoss()
         # Each data models.
-        self.model_build = BuildModel()
-        self.model_wifi = WifiModel()  # WifiModel, TmpWifiModel
-        self.model_beacon = BeaconModel()
+        # self.model_build = BuildModel()
+        self.model_wifi = WifiModel(seq_len=wifi_seq_len)  # WifiModel, TmpWifiModel
+        # self.model_beacon = BeaconModel()
 
         input_dim = (
-            self.model_build.output_dim
-            + self.model_wifi.output_dim
+            self.model_wifi.output_dim
             # + self.model_beacon.output_dim
         )
 
@@ -233,13 +232,13 @@ class InddorModel(LightningModule):
     def forward(self, x):
         x_build, x_wifi, x_beacon = x
 
-        x_build = self.model_build(x_build)
-        x_wifi = self.model_wifi(x_wifi, x_build)
-        x_beacon = self.model_beacon(x_beacon)
+        # x_build = self.model_build(x_build)
+        x_wifi = self.model_wifi(x_wifi)
+        # x_beacon = self.model_beacon(x_beacon)
 
         x = torch.cat(
             (
-                x_build,
+                # x_build,
                 x_wifi,
                 # x_beacon,
             ),
