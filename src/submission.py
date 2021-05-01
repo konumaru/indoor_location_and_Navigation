@@ -151,10 +151,7 @@ class IndoorTestDataset(Dataset):
         return len(self.site_id)
 
     def __getitem__(self, idx):
-        x_build = (
-            self.site_id[idx],
-            self.floor[idx],
-        )
+        x_build = (self.site_id[idx], self.floor[idx])
         x_wifi = (
             self.wifi_bssid[idx],
             self.wifi_rssi[idx],
@@ -210,10 +207,10 @@ def main():
         _floor = []
         _postion = []
         for batch in dataloader:
-            y_hat = model(batch)
+            floor_hat, pos_hat = model(batch)
 
             # _floor.append(y_hat[0])
-            _postion.append(y_hat)
+            _postion.append(pos_hat)
 
         # _floor = torch.cat(_floor, dim=0).detach().numpy().copy()
         _postion = torch.cat(_postion, dim=0).detach().numpy().copy()

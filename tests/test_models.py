@@ -8,7 +8,7 @@ from src import models
 
 def get_build_feature(batch_size: int = 100):
     site_id = torch.randint(100, size=(batch_size, 1))
-    floor = torch.randint(10, size=(batch_size, 1))
+    floor = torch.randint(10, size=(batch_size, 1), dtype=torch.long)
     return (site_id, floor)
 
 
@@ -40,8 +40,7 @@ def test_wifi_model():
 
     input_wifi = get_wifi_feature(batch_size, seq_len)
 
-    # model = models.WifiModel()
-    model = models.TmpWifiModel()
+    model = models.WifiModel()
     z = model(input_wifi, x_build)
 
     assert z.size(0) == batch_size
@@ -76,10 +75,11 @@ def test_indoor_model():
     y = (floor, waypoint)
 
     model = models.InddorModel()
-    z = model(x)
+    floor_hat, pos_hat = model(x)
 
-    # loss_fn = models.MeanPositionLoss()
-    # loss = loss_fn(z, y)
-    loss_fn = models.RMSELoss()
-    loss = loss_fn(z, y[1])
+    loss_fn = models.MeanAbsolutePositionLoss()
+    loss = loss_fn(pos_hat, y[1], floor_hat, torch.flatten(y[0]))
     loss.backward()
+
+    eval_fn = models.MeanPositionLoss()
+    metric = eval_fn(pos_hat, y[1], torch.argmax(floor_hat, dim=1), y[0])

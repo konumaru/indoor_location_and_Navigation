@@ -1,13 +1,14 @@
-Change-WifiFeature    1 18.6501
-Change-WifiFeature    2 18.2346
+                Baseline    0 nan
+                Baseline    0 29.3877
+        Change-WifiModel    0 20.4044
+                Baseline    1 19.4458
+                Baseline    2 nan
+                Baseline    2 nan
 
-Change-WifiFeature    3 18.4192
-Change-WifiFeature    4 18.4361
-Update-WifiModelAddedSite    0 18.5957
-Update-WifiModelLSTMLayer    0 21.9559
-Update-WifiModelLSTMLayer    0 13.9000
-Update-WifiModelLSTMLayer    1 21.7447
-    Baseline    0 nan
-    Baseline    0 29.3877
-Change-WifiModel    0 20.4044
-    Baseline    1 19.4458
+                Baseline    2 20.5042
+                Baseline    3 nan
+                Baseline    3 nan
+                Baseline    3 nan
+                Baseline    3 nan
+                Baseline    3 18.8255
+                Baseline    4 16.2967

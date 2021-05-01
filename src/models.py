@@ -11,14 +11,22 @@ import pytorch_lightning as pl
 from pytorch_lightning import LightningModule
 
 
-class RMSELoss(nn.Module):
+class MeanAbsolutePositionLoss(nn.Module):
     def __init__(self):
-        super(RMSELoss, self).__init__()
+        super(MeanAbsolutePositionLoss, self).__init__()
+        self.ce_loss = nn.CrossEntropyLoss()
 
-    def forward(self, y_hat, y):
+    def forward(self, y_hat, y, floor_hat=None, floor=None):
         pos_error = torch.abs(y_hat - y)
         pos_error = torch.sum(pos_error, dim=1)
-        return torch.mean(pos_error)
+
+        # p = 1  # 15
+        # floor_error = p * torch.abs(floor_hat - floor)
+        floor = torch.flatten(torch.add(floor, 3))
+        floor_error = self.ce_loss(floor_hat, floor)
+
+        error = pos_error + floor_error
+        return torch.mean(error)
 
 
 class MeanPositionLoss(nn.Module):
@@ -29,10 +37,10 @@ class MeanPositionLoss(nn.Module):
         pos_error = y_hat - y
         pos_error = torch.sum(torch.sqrt(torch.pow(pos_error, 2)), dim=1)
 
-        # p = 15
-        # floor_error = p * torch.abs(floor_hat - floor)
+        p = 15
+        floor_error = p * torch.abs(floor_hat - floor)
 
-        error = pos_error  # + floor_error
+        error = pos_error + floor_error
         return torch.mean(error)
 
 
@@ -50,7 +58,6 @@ class BuildModel(nn.Module):
 
     def forward(self, x):
         x_site, x_floor = x
-
         x_site = self.embed_site(x_site)
         x_site = x_site.view(-1, self.site_embed_dim)
         x = torch.cat((x_site, x_floor), dim=1)
@@ -85,7 +92,7 @@ class WifiModel(nn.Module):
         )
 
     def forward(self, x, x_build):
-        x_build = torch.tile(x_build, dims=(1, 100)).reshape(-1, 100, 65)
+        x_build = torch.tile(x_build, dims=(1, 100)).reshape(-1, 100, x_build.shape[1])
         (wifi_bssid, wifi_rssi, wifi_freq, wifi_last_seen_ts) = x
 
         bssid_vec = self.embed_bssid(wifi_bssid)
@@ -191,7 +198,7 @@ class InddorModel(LightningModule):
         super(InddorModel, self).__init__()
         self.lr = lr
         # Define loss function.
-        self.loss_fn = RMSELoss()  # MeanPositionLoss, RMSELoss, MSELoss
+        self.loss_fn = MeanAbsolutePositionLoss()
         self.eval_fn = MeanPositionLoss()
         # Each data models.
         self.model_build = BuildModel()
@@ -213,8 +220,8 @@ class InddorModel(LightningModule):
         )
         self.layer_floor = nn.Sequential(
             nn.Linear(64, 64),
-            nn.Linear(64, 14),
-            nn.Softmax(dim=1),
+            nn.ReLU(),
+            nn.Linear(64, 17),
         )
         self.layer_position = nn.Sequential(
             nn.Linear(64, 64),
@@ -239,10 +246,9 @@ class InddorModel(LightningModule):
         )
         x = self.layers(x)
 
-        # f = self.layer_floor(x)
-        # f = torch.add(torch.argmax(f, axis=1), -3).view(-1, 1)
+        f = self.layer_floor(x)
         pos = self.layer_position(x)
-        return pos
+        return (f, pos)
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
@@ -254,29 +260,30 @@ class InddorModel(LightningModule):
 
     def shared_step(self, batch, step_name):
         x, y = batch
-        z = self(x)
-        loss = self.loss_fn(z, y[1])
-        outputs = {"y": y, "z": z}
+        floor_hat, pos_hat = self(x)
+        loss = self.loss_fn(pos_hat, y[1], floor_hat, y[0])
+        outputs = {"y": y, "z": (torch.argmax(floor_hat, dim=1).view(-1, 1), pos_hat)}
         self.log(f"{step_name}_loss", loss)
         return loss, outputs
 
     def shared_epoch_end(self, outputs, name):
         floor = torch.cat([out["outputs"]["y"][0] for out in outputs], dim=0)
+        floor_hat = torch.cat([out["outputs"]["z"][0] for out in outputs], dim=0)
         pos = torch.cat([out["outputs"]["y"][1] for out in outputs], dim=0)
-        pos_hat = torch.cat([out["outputs"]["z"] for out in outputs], dim=0)
-        metric = self.eval_fn(pos, pos_hat)
+        pos_hat = torch.cat([out["outputs"]["z"][1] for out in outputs], dim=0)
+        metric = self.eval_fn(pos_hat, pos, floor_hat, floor)
         self.log(f"{name}_metric", metric, prog_bar=True)
-        return floor, pos, pos_hat
+        return floor, pos, floor_hat, pos_hat
 
     def training_step(self, batch, batch_idx):
         loss, outputs = self.shared_step(batch, "train")
         return {"loss": loss, "outputs": outputs}
 
-    def training_step_end(self, outputs):
-        return outputs
+    # def training_step_end(self, outputs):
+    #     return outputs
 
-    def training_epoch_end(self, outputs):
-        _ = self.shared_epoch_end(outputs, "train")
+    # def training_epoch_end(self, outputs):
+    #     _ = self.shared_epoch_end(outputs, "train")
 
     def validation_step(self, batch, batch_idx):
         loss, outputs = self.shared_step(batch, "valid")
@@ -296,15 +303,16 @@ class InddorModel(LightningModule):
         return outputs
 
     def test_epoch_end(self, outputs):
-        floor, pos, pos_hat = self.shared_epoch_end(outputs, "test")
+        floor, pos, floor_hat, pos_hat = self.shared_epoch_end(outputs, "test")
 
         floor = floor.detach().cpu().numpy()
+        floor_hat = floor_hat.detach().cpu().numpy()
         pos = pos.detach().cpu().numpy()
         pos_hat = pos_hat.detach().cpu().numpy()
 
         # Save plot of floor count.
         # https://pytorch-lightning.readthedocs.io/en/latest/common/loggers.html#tensorboard
-        figure = self.floor_bar_plot(floor, floor)
+        figure = self.floor_bar_plot(floor, floor_hat)
         self.logger.experiment.add_figure("floor_cnt", figure, 0)
         # Save plot of position distribution.
         self.logger.experiment.add_histogram("x", pos[:, 0], 0)
@@ -319,8 +327,8 @@ class InddorModel(LightningModule):
 
         width = 0.35
         fig, ax = plt.subplots()
-        rects1 = ax.bar(idx - width / 2, cnt, width, label="Predict")
-        rects2 = ax.bar(idx_hat + width / 2, cnt_hat, width, label="Actual")
+        rects1 = ax.bar(idx - width / 2, cnt, width, label="Actual")
+        rects2 = ax.bar(idx_hat + width / 2, cnt_hat, width, label="Predict")
 
         # Add some text for labels, title and custom x-axis tick labels, etc.
         ax.set_ylabel("Record Count")

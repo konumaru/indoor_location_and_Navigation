@@ -1,5 +1,5 @@
-../tb_logs/Baseline/0.1.0/checkpoints/epoch=18-trian_loss=0.0000-valid_loss=18.8488.ckpt
-../tb_logs/Baseline/0.1.1/checkpoints/epoch=19-trian_loss=0.0000-valid_loss=21.1002.ckpt
-../tb_logs/Baseline/0.1.2/checkpoints/epoch=17-trian_loss=0.0000-valid_loss=19.6462.ckpt
-../tb_logs/Baseline/0.1.3/checkpoints/epoch=19-trian_loss=0.0000-valid_loss=18.5959.ckpt
-../tb_logs/Baseline/0.1.4/checkpoints/epoch=18-trian_loss=0.0000-valid_loss=19.0379.ckpt
+../tb_logs/Baseline/0.4.0/checkpoints/epoch=19-trian_loss=0.0000-valid_loss=16.0062.ckpt
+../tb_logs/Baseline/0.4.1/checkpoints/epoch=19-trian_loss=0.0000-valid_loss=15.6144.ckpt
+../tb_logs/Baseline/0.4.2/checkpoints/epoch=16-trian_loss=0.0000-valid_loss=15.7181.ckpt
+../tb_logs/Baseline/0.4.3/checkpoints/epoch=15-trian_loss=0.0000-valid_loss=17.4343.ckpt
+../tb_logs/Baseline/0.4.4/checkpoints/epoch=19-trian_loss=0.0000-valid_loss=16.7105.ckpt

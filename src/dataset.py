@@ -16,7 +16,7 @@ class IndoorDataset(Dataset):
 
         # Target, waypoint
         wp = load_pickle(featfure_dir / "train_waypoint.pkl", verbose=False)
-        floor = wp[["floor"]].to_numpy().astype("int32")
+        floor = wp[["floor"]].to_numpy().astype("int64")
         position = wp[["x", "y"]].to_numpy().astype("float32")
         self.floor = floor[data_index]
         self.position = position[data_index]
@@ -49,10 +49,7 @@ class IndoorDataset(Dataset):
         return len(self.site_id)
 
     def __getitem__(self, idx):
-        x_build = (
-            self.site_id[idx],
-            self.floor[idx],
-        )
+        x_build = (self.site_id[idx], self.floor[idx])
         x_wifi = (
             self.wifi_bssid[idx],
             self.wifi_rssi[idx],
