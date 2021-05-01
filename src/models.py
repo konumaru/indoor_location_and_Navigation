@@ -11,42 +11,28 @@ import pytorch_lightning as pl
 from pytorch_lightning import LightningModule
 
 
-class MSELoss(nn.Module):
-    def __init__(self):
-        super(MSELoss, self).__init__()
-
-    def forward(self, y_hat, y):
-        diff_x = torch.abs(y_hat[:, 0] - y[:, 0])
-        diff_y = torch.abs(y_hat[:, 1] - y[:, 1])
-        error = diff_x + diff_y
-        return torch.mean(error)
-
-
 class RMSELoss(nn.Module):
     def __init__(self):
         super(RMSELoss, self).__init__()
 
     def forward(self, y_hat, y):
-        diff_x = y_hat[:, 0] - y[:, 0]
-        diff_y = y_hat[:, 1] - y[:, 1]
-        error = torch.sqrt(torch.pow(diff_x, 2) + torch.pow(diff_y, 2))
-        return torch.mean(error)
+        pos_error = torch.abs(y_hat - y)
+        pos_error = torch.sum(pos_error, dim=1)
+        return torch.mean(pos_error)
 
 
 class MeanPositionLoss(nn.Module):
     def __init__(self):
         super(MeanPositionLoss, self).__init__()
 
-    def forward(self, y_hat, y):
-        floor, pos = y
-        floor_hat, pos_hat = y_hat
+    def forward(self, y_hat, y, floor_hat=None, floor=None):
+        pos_error = y_hat - y
+        pos_error = torch.sum(torch.sqrt(torch.pow(pos_error, 2)), dim=1)
 
-        p = 15
-        diff_f = torch.abs(floor - floor)
-        diff_x = pos_hat[:, 0] - pos[:, 0]
-        diff_y = pos_hat[:, 1] - pos[:, 1]
+        # p = 15
+        # floor_error = p * torch.abs(floor_hat - floor)
 
-        error = torch.sqrt(torch.pow(diff_x, 2) + torch.pow(diff_y, 2)) + p * diff_f
+        error = pos_error  # + floor_error
         return torch.mean(error)
 
 
@@ -206,10 +192,10 @@ class InddorModel(LightningModule):
         self.lr = lr
         # Define loss function.
         self.loss_fn = RMSELoss()  # MeanPositionLoss, RMSELoss, MSELoss
-        self.eval_fn = RMSELoss()
+        self.eval_fn = MeanPositionLoss()
         # Each data models.
         self.model_build = BuildModel()
-        self.model_wifi = TmpWifiModel()
+        self.model_wifi = WifiModel()  # WifiModel, TmpWifiModel
         self.model_beacon = BeaconModel()
 
         input_dim = (
@@ -225,11 +211,11 @@ class InddorModel(LightningModule):
             nn.Linear(256, 64),
             nn.ReLU(),
         )
-        # self.layer_floor = nn.Sequential(
-        #     nn.Linear(64, 64),
-        #     nn.Linear(64, 14),
-        #     nn.Softmax(dim=1),
-        # )
+        self.layer_floor = nn.Sequential(
+            nn.Linear(64, 64),
+            nn.Linear(64, 14),
+            nn.Softmax(dim=1),
+        )
         self.layer_position = nn.Sequential(
             nn.Linear(64, 64),
             nn.ReLU(),
@@ -254,7 +240,7 @@ class InddorModel(LightningModule):
         x = self.layers(x)
 
         # f = self.layer_floor(x)
-        # f = (torch.argmax(f, axis=1) - 3).view(-1, 1)
+        # f = torch.add(torch.argmax(f, axis=1), -3).view(-1, 1)
         pos = self.layer_position(x)
         return pos
 

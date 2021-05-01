@@ -199,7 +199,7 @@ def main():
     )
 
     # Load model and predict.
-    checkpoints = load_checkpoints("Update-WifiModelLSTMLayer")
+    checkpoints = load_checkpoints("Baseline")
     floor = []
     postion = []
     for _, ckpt in enumerate(track(checkpoints)):
@@ -220,8 +220,6 @@ def main():
 
         # floor.append(_floor)
         postion.append(_postion)
-
-        break
 
     # floor = (
     #     pd.DataFrame(np.concatenate(floor, axis=1))

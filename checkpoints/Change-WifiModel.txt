@@ -1,0 +1,5 @@
+../tb_logs/Change-WifiModel/0.0.0/checkpoints/epoch=19-trian_loss=0.0000-valid_loss=19.0548.ckpt
+../tb_logs/Change-WifiModel/0.0.1/checkpoints/epoch=18-trian_loss=0.0000-valid_loss=20.6421.ckpt
+../tb_logs/Change-WifiModel/0.0.2/checkpoints/epoch=18-trian_loss=0.0000-valid_loss=21.1185.ckpt
+../tb_logs/Change-WifiModel/0.0.3/checkpoints/epoch=16-trian_loss=0.0000-valid_loss=20.5665.ckpt
+../tb_logs/Change-WifiModel/0.0.4/checkpoints/epoch=19-trian_loss=0.0000-valid_loss=20.6403.ckpt

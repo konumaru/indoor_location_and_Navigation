@@ -7,3 +7,7 @@ Update-WifiModelAddedSite    0 18.5957
 Update-WifiModelLSTMLayer    0 21.9559
 Update-WifiModelLSTMLayer    0 13.9000
 Update-WifiModelLSTMLayer    1 21.7447
+    Baseline    0 nan
+    Baseline    0 29.3877
+Change-WifiModel    0 20.4044
+    Baseline    1 19.4458

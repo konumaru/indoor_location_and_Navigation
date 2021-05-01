@@ -39,7 +39,7 @@ def get_config(mode: str):
 
 def dump_cv_metric(model_name: str, version: int, metric: float):
     with open("../checkpoints/scores.txt", "a") as f:
-        txt = f"\n{model_name: >12} {str(version): >4} {metric:.4f}"
+        txt = f"\n{model_name: >24} {str(version): >4} {metric:.4f}"
         f.write(txt)
 
 
