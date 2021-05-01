@@ -16,14 +16,12 @@ class MeanAbsolutePositionLoss(nn.Module):
         super(MeanAbsolutePositionLoss, self).__init__()
         self.ce_loss = nn.CrossEntropyLoss()
 
-    def forward(self, y_hat, y, floor_hat=None, floor=None):
+    def forward(self, y_hat, y, floor_hat, floor):
         pos_error = torch.abs(y_hat - y)
         pos_error = torch.sum(pos_error, dim=1)
 
-        # p = 1  # 15
-        # floor_error = p * torch.abs(floor_hat - floor)
-        floor = torch.flatten(torch.add(floor, 3))
-        floor_error = self.ce_loss(floor_hat, floor)
+        p = 1  # 15
+        floor_error = p * self.ce_loss(floor_hat, floor)
 
         error = pos_error + floor_error
         return torch.mean(error)

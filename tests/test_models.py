@@ -1,9 +1,38 @@
 import torch
+import torch.nn as nn
+import torch.nn.functional as F
 import warnings
 
 warnings.simplefilter("ignore")
 
 from src import models
+
+
+def test_loss_function():
+    batch_size = 64
+    pos = torch.rand(size=(batch_size, 2), requires_grad=True)
+    pos_hat = pos.clone()
+
+    floor = torch.randint(14, size=(batch_size,))
+    floor_hat = torch.rand(size=(batch_size, 14), requires_grad=True)
+
+    loss_fn = models.MeanAbsolutePositionLoss()
+    loss = loss_fn(pos_hat, pos, floor_hat, floor)
+    loss.backward()
+
+
+def test_evaluation_function():
+    batch_size = 64
+    pos = torch.rand(size=(batch_size, 2), requires_grad=True)
+    pos_hat = pos.clone()
+
+    floor = torch.randint(14, size=(batch_size,))
+    floor_hat = floor.clone()
+
+    eval_fn = models.MeanPositionLoss()
+    metric = eval_fn(pos_hat, pos, floor_hat, floor)
+
+    assert metric == 0
 
 
 def get_build_feature(batch_size: int = 100):
