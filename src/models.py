@@ -66,88 +66,91 @@ class WifiModel(nn.Module):
     def __init__(
         self,
         seq_len: int = 100,
-        bssid_embed_dim: int = 64,
+        site_embed_dim: int = 32,
+        bssid_embed_dim: int = 32,
         output_dim: int = 256,
     ):
         super(WifiModel, self).__init__()
         self.seq_len = seq_len
-        self.bssid_embed_dim = bssid_embed_dim
         self.output_dim = output_dim
 
-        self.embed_bssid = nn.Embedding(238859 + 1, bssid_embed_dim)
+        self.site_embed = nn.Embedding(205, site_embed_dim)
+        self.bssid_embed = nn.Embedding(238859 + 1, bssid_embed_dim)
         # LSTM layers.
-        n_dim_lstm = bssid_embed_dim + 2 + 65
+        n_dim_lstm = bssid_embed_dim + 1
         self.lstm_out_dim = 128
         self.lstm1 = nn.LSTM(n_dim_lstm, 256, num_layers=2, batch_first=True)
         self.lstm2 = nn.LSTM(256, self.lstm_out_dim, batch_first=True)
 
+        layer_input_dim = seq_len * self.lstm_out_dim + site_embed_dim
         self.layers = nn.Sequential(
-            nn.BatchNorm1d(seq_len * self.lstm_out_dim),
-            nn.Linear(seq_len * self.lstm_out_dim, 512),
+            nn.BatchNorm1d(layer_input_dim),
+            nn.Linear(layer_input_dim, 512),
             nn.PReLU(),
             nn.Linear(512, output_dim),
             nn.PReLU(),
         )
 
-    def forward(self, x, x_build):
-        x_build = torch.tile(x_build, dims=(1, 100)).reshape(-1, 100, x_build.shape[1])
-        (wifi_bssid, wifi_rssi, wifi_freq, wifi_last_seen_ts) = x
+    def forward(self, x):
+        (site, wifi_bssid, wifi_rssi, wifi_freq, wifi_last_seen_ts) = x
 
-        bssid_vec = self.embed_bssid(wifi_bssid)
+        site_vec = self.site_embed(site)
+        wifi_bssid_vec = self.bssid_embed(wifi_bssid)
         wifi_rssi = wifi_rssi.view(-1, self.seq_len, 1)
-        wifi_freq = wifi_freq.view(-1, self.seq_len, 1)
+        # wifi_freq = wifi_freq.view(-1, self.seq_len, 1)
         # wifi_last_seen_ts = wifi_last_seen_ts.view(-1, self.seq_len, 1)
         # x = torch.cat((bssid_vec, wifi_rssi, wifi_freq, wifi_last_seen_ts), dim=2)
-        x = torch.cat((bssid_vec, wifi_rssi, wifi_freq, x_build), dim=2)
+        x = torch.cat((wifi_bssid_vec, wifi_rssi), dim=2)
 
         x, _ = self.lstm1(x)
         x, _ = self.lstm2(x)
         x = x.reshape(-1, self.seq_len * self.lstm_out_dim)
 
+        x = torch.cat((x, site_vec), dim=1)
         x = self.layers(x)
         return x
 
 
-class TmpWifiModel(nn.Module):
-    def __init__(
-        self,
-        seq_len: int = 100,
-        bssid_embed_dim: int = 64,
-        output_dim: int = 128,
-    ):
-        super(TmpWifiModel, self).__init__()
-        self.seq_len = seq_len
-        self.bssid_embed_dim = bssid_embed_dim
-        self.output_dim = output_dim
+# class TmpWifiModel(nn.Module):
+#     def __init__(
+#         self,
+#         seq_len: int = 100,
+#         bssid_embed_dim: int = 64,
+#         output_dim: int = 128,
+#     ):
+#         super(TmpWifiModel, self).__init__()
+#         self.seq_len = seq_len
+#         self.bssid_embed_dim = bssid_embed_dim
+#         self.output_dim = output_dim
 
-        self.embed_bssid = nn.Embedding(238859 + 1, bssid_embed_dim)
+#         self.embed_bssid = nn.Embedding(238859 + 1, bssid_embed_dim)
 
-        self.layers = nn.Sequential(
-            nn.BatchNorm1d(6665),
-            nn.Linear(6665, 512),
-            nn.PReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(512, 256),
-            nn.PReLU(),
-            nn.Dropout(0.3),
-        )
+#         self.layers = nn.Sequential(
+#             nn.BatchNorm1d(6665),
+#             nn.Linear(6665, 512),
+#             nn.PReLU(),
+#             nn.Dropout(0.3),
+#             nn.Linear(512, 256),
+#             nn.PReLU(),
+#             nn.Dropout(0.3),
+#         )
 
-        self.lstm1 = nn.LSTM(256, 256, num_layers=2)
-        self.lstm2 = nn.LSTM(256, self.output_dim)
+#         self.lstm1 = nn.LSTM(256, 256, num_layers=2)
+#         self.lstm2 = nn.LSTM(256, self.output_dim)
 
-    def forward(self, x, x_build):
-        (wifi_bssid, wifi_rssi, wifi_freq, wifi_last_seen_ts) = x
+#     def forward(self, x, x_build):
+#         (wifi_bssid, wifi_rssi, wifi_freq, wifi_last_seen_ts) = x
 
-        bssid_vec = self.embed_bssid(wifi_bssid)
-        bssid_vec = bssid_vec.view(-1, self.seq_len * self.bssid_embed_dim)
-        x = torch.cat((bssid_vec, wifi_rssi, wifi_freq, x_build), dim=1)
+#         bssid_vec = self.embed_bssid(wifi_bssid)
+#         bssid_vec = bssid_vec.view(-1, self.seq_len * self.bssid_embed_dim)
+#         x = torch.cat((bssid_vec, wifi_rssi, wifi_freq, x_build), dim=1)
 
-        x = self.layers(x)
-        x = x.view(-1, 1, 256)
-        x, _ = self.lstm1(x)
-        x, _ = self.lstm2(x)
-        x = x.view(-1, self.output_dim)
-        return x
+#         x = self.layers(x)
+#         x = x.view(-1, 1, 256)
+#         x, _ = self.lstm1(x)
+#         x, _ = self.lstm2(x)
+#         x = x.view(-1, self.output_dim)
+#         return x
 
 
 class BeaconModel(nn.Module):

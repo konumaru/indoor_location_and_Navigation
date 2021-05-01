@@ -51,26 +51,23 @@ def test_build_model():
     assert z.size(0) == batch_size
 
 
-def get_wifi_feature(batch_size: int = 100, seq_len: int = 20):
-    bssid = torch.randint(100, size=(batch_size, seq_len))
+def get_wifi_feature(batch_size: int = 32, seq_len: int = 20):
+    site = torch.randint(205, size=(batch_size,))
+    bssid = torch.randint(238860, size=(batch_size, seq_len))
     rssi = torch.rand(size=(batch_size, seq_len))
     freq = torch.rand(size=(batch_size, seq_len))
     last_seen_ts = torch.rand(size=(batch_size, seq_len))
-    return (bssid, rssi, freq, last_seen_ts)
+    return (site, bssid, rssi, freq, last_seen_ts)
 
 
 def test_wifi_model():
-    seq_len = 100
-    batch_size = 100
-
-    input_build = get_build_feature(batch_size)
-    model = models.BuildModel()
-    x_build = model(input_build)
+    seq_len = 20
+    batch_size = 32
 
     input_wifi = get_wifi_feature(batch_size, seq_len)
 
-    model = models.WifiModel()
-    z = model(input_wifi, x_build)
+    model = models.WifiModel(seq_len=seq_len)
+    z = model(input_wifi)
 
     assert z.size(0) == batch_size
 
