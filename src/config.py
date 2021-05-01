@@ -21,7 +21,7 @@ class DebugConfig(CommonConfig):
 class ValidConfig(CommonConfig):
     accelerator = "dp"
     gpus = 1
-    NUM_EPOCH = 20
+    NUM_EPOCH = 50
     DEV_RUN = 0
 
     def __init__(self):

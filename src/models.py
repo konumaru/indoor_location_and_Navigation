@@ -256,13 +256,13 @@ class InddorModel(LightningModule):
             "scheduler": torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99),
             "name": "lr",
         }
-        return [optimizer]  # , [lr_scheduler]
+        return [optimizer], [lr_scheduler]
 
     def shared_step(self, batch, step_name):
         x, y = batch
         floor_hat, pos_hat = self(x)
         loss = self.loss_fn(pos_hat, y[1], floor_hat, y[0])
-        outputs = {"y": y, "z": (torch.argmax(floor_hat, dim=1).view(-1, 1), pos_hat)}
+        outputs = {"y": y, "z": (torch.argmax(floor_hat, dim=1), pos_hat)}
         self.log(f"{step_name}_loss", loss)
         return loss, outputs
 
@@ -271,6 +271,7 @@ class InddorModel(LightningModule):
         floor_hat = torch.cat([out["outputs"]["z"][0] for out in outputs], dim=0)
         pos = torch.cat([out["outputs"]["y"][1] for out in outputs], dim=0)
         pos_hat = torch.cat([out["outputs"]["z"][1] for out in outputs], dim=0)
+
         metric = self.eval_fn(pos_hat, pos, floor_hat, floor)
         self.log(f"{name}_metric", metric, prog_bar=True)
         return floor, pos, floor_hat, pos_hat
@@ -279,11 +280,11 @@ class InddorModel(LightningModule):
         loss, outputs = self.shared_step(batch, "train")
         return {"loss": loss, "outputs": outputs}
 
-    # def training_step_end(self, outputs):
-    #     return outputs
+    def training_step_end(self, outputs):
+        return outputs
 
-    # def training_epoch_end(self, outputs):
-    #     _ = self.shared_epoch_end(outputs, "train")
+    def training_epoch_end(self, outputs):
+        _ = self.shared_epoch_end(outputs, "train")
 
     def validation_step(self, batch, batch_idx):
         loss, outputs = self.shared_step(batch, "valid")

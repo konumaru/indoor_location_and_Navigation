@@ -49,16 +49,10 @@ def dump_best_checkpoints(best_checkpoints: List, model_name: AnyStr):
         f.write(txt)
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-m", "--mode", type=str, choices=["debug", "valid", "train"], default="debug"
-    )
-    parser.add_argument("-n", "--model_name", type=str, default="Debug", required=True)
-    parser.add_argument("-v", "--version", type=int, default=0, required=True)
-    args = parser.parse_args()
+# TODO: 指定したversionのディレクトリがすでに存在していたら一度削除する
 
-    config = get_config(args.mode)
+
+def run_train(args, config):
     pl.seed_everything(config.SEED)
 
     metrics = []
@@ -81,7 +75,7 @@ def main():
         lr_monitor = LearningRateMonitor(logging_interval="step")
         early_stop_callback = EarlyStopping(
             monitor="valid_loss",
-            patience=10,
+            patience=15,
             verbose=False,
             mode="min",
         )
@@ -119,6 +113,21 @@ def main():
 
     dump_cv_metric(args.model_name, args.version, np.mean(metrics))
     dump_best_checkpoints(best_checkpoints, args.model_name)
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-m", "--mode", type=str, choices=["debug", "valid", "train"], default="debug"
+    )
+    parser.add_argument(
+        "-n", "--model_name", type=str, default="Debug-Baseline", required=True
+    )
+    parser.add_argument("-v", "--version", type=int, default=0, required=True)
+    args = parser.parse_args()
+
+    config = get_config(args.mode)
+    run_train(args, config)
 
 
 if __name__ == "__main__":
