@@ -1,0 +1,6 @@
+../tb_logs/CV-GroupShuffleSplit0.2/0.0.0/checkpoints/epoch=21-trian_loss=0.0000-valid_loss=22.0694-valid_metric=44.7780.ckpt
+../tb_logs/CV-GroupShuffleSplit0.2/0.0.1/checkpoints/epoch=38-trian_loss=0.0000-valid_loss=21.3351-valid_metric=44.0637.ckpt
+../tb_logs/CV-GroupShuffleSplit0.2/0.0.2/checkpoints/epoch=40-trian_loss=0.0000-valid_loss=20.4544-valid_metric=43.6213.ckpt
+../tb_logs/CV-GroupShuffleSplit0.2/0.0.3/checkpoints/epoch=18-trian_loss=0.0000-valid_loss=22.6605-valid_metric=46.1155.ckpt
+../tb_logs/CV-GroupShuffleSplit0.2/0.0.4/checkpoints/epoch=41-trian_loss=0.0000-valid_loss=21.3638-valid_metric=44.9299.ckpt
+../tb_logs/CV-GroupShuffleSplit0.2/0.0.5/checkpoints/epoch=43-trian_loss=0.0000-valid_loss=23.6199-valid_metric=45.8927.ckpt

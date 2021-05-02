@@ -125,7 +125,7 @@ class IndoorTestDataset(Dataset):
 
         # Build feature.
         site_id = np.load(featfure_dir / "test_site_id.npy")
-        self.site_id = site_id.reshape(-1, 1)
+        self.site_id = site_id
 
         # Wifi features.
         wifi_bssid = np.load(featfure_dir / "test_wifi_bssid.npy")
@@ -153,6 +153,7 @@ class IndoorTestDataset(Dataset):
     def __getitem__(self, idx):
         x_build = (self.site_id[idx], self.floor[idx])
         x_wifi = (
+            self.site_id[idx],
             self.wifi_bssid[idx],
             self.wifi_rssi[idx],
             self.wifi_freq[idx],
@@ -191,12 +192,13 @@ def main():
         dataset,
         batch_size=512,
         num_workers=8,
+        pin_memory=True,
         shuffle=False,
         drop_last=False,
     )
 
     # Load model and predict.
-    checkpoints = load_checkpoints("Baseline")
+    checkpoints = load_checkpoints("CV-GroupShuffleSplit0.2")
     floor = []
     postion = []
     for _, ckpt in enumerate(track(checkpoints)):

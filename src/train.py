@@ -49,9 +49,6 @@ def dump_best_checkpoints(best_checkpoints: List, model_name: AnyStr):
         f.write(txt)
 
 
-# TODO: 指定したversionのディレクトリがすでに存在していたら一度削除する
-
-
 def run_train(args, config):
     pl.seed_everything(config.SEED)
 
@@ -68,7 +65,7 @@ def run_train(args, config):
         datamodule.setup()
 
         checkpoint_callback = ModelCheckpoint(
-            filename="{epoch:02d}-{trian_loss:.4f}-{valid_loss:.4f}-{test_metric:.4f}",
+            filename="{epoch:02d}-{trian_loss:.4f}-{valid_loss:.4f}-{valid_metric:.4f}",
             monitor="valid_loss",
             mode="min",
         )
@@ -106,10 +103,13 @@ def run_train(args, config):
         else:
             metric = float(
                 re.findall(
-                    r"test_metric=(\d+\.\d+)", checkpoint_callback.best_model_path
+                    r"valid_metric=(\d+\.\d+)", checkpoint_callback.best_model_path
                 )[0]
             )
             metrics.append(metric)
+
+        if n_fold == 5:
+            break
 
     dump_cv_metric(args.model_name, args.version, np.mean(metrics))
     dump_best_checkpoints(best_checkpoints, args.model_name)

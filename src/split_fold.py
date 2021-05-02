@@ -24,9 +24,11 @@ def main():
     le = LabelEncoder()
     wp["path"] = le.fit_transform(wp["path"])
 
-    # cv = StratifiedKFold(
-    #     n_splits=Config.NUM_FOLD, shuffle=True, random_state=Config.SEED
-    # )
+    # NOTE: Conclusion at v1 is below.
+    # - Stratifield is bad cv strategy.
+    # - k <= 5.
+    # - Not Shuffle Split.
+
     cv = GroupKFold(n_splits=Config.NUM_FOLD)
     for n_fold, (train_idx, test_idx) in enumerate(
         cv.split(X=wp, y=wp[["path"]], groups=wp[["path"]])

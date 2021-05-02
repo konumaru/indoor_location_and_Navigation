@@ -1,7 +1,7 @@
 class CommonConfig:
     SEED = 42
 
-    NUM_FOLD = 5
+    NUM_FOLD = 10
     BATCH_SIZE = 512
 
 

@@ -1,0 +1,5 @@
+../tb_logs/CV-StratifiedKFold/0.0.0/checkpoints/epoch=39-trian_loss=0.0000-valid_loss=17.7024-test_metric=0.0000.ckpt
+../tb_logs/CV-StratifiedKFold/0.0.1/checkpoints/epoch=22-trian_loss=0.0000-valid_loss=42.9756-test_metric=0.0000.ckpt
+../tb_logs/CV-StratifiedKFold/0.0.2/checkpoints/epoch=34-trian_loss=0.0000-valid_loss=18.5662-test_metric=0.0000.ckpt
+../tb_logs/CV-StratifiedKFold/0.0.3/checkpoints/epoch=48-trian_loss=0.0000-valid_loss=18.1101-test_metric=0.0000.ckpt
+../tb_logs/CV-StratifiedKFold/0.0.4/checkpoints/epoch=48-trian_loss=0.0000-valid_loss=17.9491-test_metric=0.0000.ckpt
