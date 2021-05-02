@@ -1,5 +1,7 @@
-                Baseline    0 0.0000
-      CV-StratifiedKFold    0 0.0000
-
          CV-GroupKFold10    0 43.6703
  CV-GroupShuffleSplit0.2    0 44.9002
+
+          CV-GroupKfold5    0 59.7506
+          CV-GroupKfold5    1 43.6573
+          CV-GroupKfold5    2 45.1865
+          CV-GroupKfold5    3 43.9427

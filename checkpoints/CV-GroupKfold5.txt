@@ -1,0 +1,5 @@
+../tb_logs/CV-GroupKfold5/0.3.0/checkpoints/epoch=22-trian_loss=0.0000-valid_loss=21.0174-valid_metric=44.1098.ckpt
+../tb_logs/CV-GroupKfold5/0.3.1/checkpoints/epoch=28-trian_loss=0.0000-valid_loss=20.6575-valid_metric=43.8288.ckpt
+../tb_logs/CV-GroupKfold5/0.3.2/checkpoints/epoch=38-trian_loss=0.0000-valid_loss=21.5747-valid_metric=43.5179.ckpt
+../tb_logs/CV-GroupKfold5/0.3.3/checkpoints/epoch=45-trian_loss=0.0000-valid_loss=20.6813-valid_metric=44.3096.ckpt
+../tb_logs/CV-GroupKfold5/0.3.4/checkpoints/epoch=45-trian_loss=0.0000-valid_loss=20.6973-valid_metric=43.9473.ckpt

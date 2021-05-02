@@ -72,6 +72,21 @@ def test_wifi_model():
     assert z.size(0) == batch_size
 
 
+def test_wifi_model_v2():
+    seq_len = 20
+    batch_size = 32
+
+    input_wifi = get_wifi_feature(batch_size, seq_len)
+
+    model = models.WifiModelV2(seq_len=seq_len)
+    z = model(input_wifi)
+
+    print(z.shape)
+    print(model.linear_input_dim)
+
+    assert z.size(0) == batch_size
+
+
 def get_beacon_feature(batch_size: int = 100, seq_len: int = 20):
     uuid = torch.randint(100, size=(batch_size, seq_len))
     tx_power = torch.rand(size=(batch_size, seq_len))

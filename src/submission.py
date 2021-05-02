@@ -198,7 +198,7 @@ def main():
     )
 
     # Load model and predict.
-    checkpoints = load_checkpoints("CV-GroupShuffleSplit0.2")
+    checkpoints = load_checkpoints("CV-GroupKfold5")
     floor = []
     postion = []
     for _, ckpt in enumerate(track(checkpoints)):
@@ -215,7 +215,7 @@ def main():
             _postion.append(pos_hat)
 
         # _floor = torch.cat(_floor, dim=0).detach().numpy().copy()
-        _postion = torch.cat(_postion, dim=0).detach().numpy().copy()
+        _postion = torch.cat(_postion, dim=0).detach().cpu().numpy()
 
         # floor.append(_floor)
         postion.append(_postion)

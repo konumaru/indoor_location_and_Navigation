@@ -108,9 +108,6 @@ def run_train(args, config):
             )
             metrics.append(metric)
 
-        if n_fold == 5:
-            break
-
     dump_cv_metric(args.model_name, args.version, np.mean(metrics))
     dump_best_checkpoints(best_checkpoints, args.model_name)
 
