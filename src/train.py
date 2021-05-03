@@ -71,10 +71,11 @@ def run_train(args, config):
         )
         lr_monitor = LearningRateMonitor(logging_interval="step")
         early_stop_callback = EarlyStopping(
-            monitor="valid_loss",
+            mode="min",
             patience=15,
             verbose=False,
-            mode="min",
+            monitor="valid_loss",
+            min_delta=0.0,
         )
 
         callbacks = [checkpoint_callback, early_stop_callback, lr_monitor]

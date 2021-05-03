@@ -5,3 +5,5 @@
           CV-GroupKfold5    1 43.6573
           CV-GroupKfold5    2 45.1865
           CV-GroupKfold5    3 43.9427
+          CV-GroupKfold5    4 44.3865
+          CV-GroupKfold5    5 43.8045

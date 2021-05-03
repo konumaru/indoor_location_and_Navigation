@@ -66,7 +66,7 @@ class WifiModel(nn.Module):
     def __init__(
         self,
         seq_len: int = 100,
-        site_embed_dim: int = 32,
+        site_embed_dim: int = 8,
         bssid_embed_dim: int = 64,
         output_dim: int = 256,
     ):
