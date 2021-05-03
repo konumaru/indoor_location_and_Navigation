@@ -82,7 +82,7 @@ class WifiModel(nn.Module):
         self.lstm1 = nn.LSTM(n_dim_lstm, 256, num_layers=2, batch_first=True)
         self.lstm2 = nn.LSTM(256, self.lstm_out_dim, batch_first=True)
 
-        layer_input_dim = seq_len * self.lstm_out_dim + site_embed_dim
+        layer_input_dim = seq_len * self.lstm_out_dim + site_embed_dim + 1
         self.layers = nn.Sequential(
             nn.BatchNorm1d(layer_input_dim),
             nn.Linear(layer_input_dim, 512),
@@ -92,9 +92,8 @@ class WifiModel(nn.Module):
         )
 
     def forward(self, x):
-        (site, wifi_bssid, wifi_rssi, wifi_freq, wifi_last_seen_ts) = x
+        (site, floor, wifi_bssid, wifi_rssi, wifi_freq, wifi_last_seen_ts) = x
 
-        site_vec = self.site_embed(site)
         wifi_bssid_vec = self.bssid_embed(wifi_bssid)
         wifi_rssi = wifi_rssi.view(-1, self.seq_len, 1)
         # wifi_freq = wifi_freq.view(-1, self.seq_len, 1)
@@ -106,7 +105,9 @@ class WifiModel(nn.Module):
         x, _ = self.lstm2(x)
         x = x.reshape(-1, self.seq_len * self.lstm_out_dim)
 
-        x = torch.cat((x, site_vec), dim=1)
+        site_vec = self.site_embed(site)
+        floor = floor.view(-1, 1)
+        x = torch.cat((x, site_vec, floor), dim=1)
         x = self.layers(x)
         return x
 
@@ -211,7 +212,7 @@ class InddorModel(LightningModule):
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         lr_scheduler = {
-            "scheduler": torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99),
+            "scheduler": torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.95),
             "name": "lr",
         }
         return [optimizer], [lr_scheduler]
@@ -280,7 +281,7 @@ class InddorModel(LightningModule):
         self.logger.experiment.add_histogram("y_hat", pos_hat[:, 1], 0)
 
     def floor_bar_plot(self, floor, floor_hat):
-        idx_all = np.arange(14) - 3
+        idx_all = np.arange(14)
         idx, cnt = np.unique(floor, return_counts=True)
         idx_hat, cnt_hat = np.unique(floor_hat, return_counts=True)
 

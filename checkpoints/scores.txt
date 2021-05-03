@@ -7,3 +7,5 @@
           CV-GroupKfold5    3 43.9427
           CV-GroupKfold5    4 44.3865
           CV-GroupKfold5    5 43.8045
+        AddFeature-floor    0 24.5123
+        AddFeature-floor    1 24.2258

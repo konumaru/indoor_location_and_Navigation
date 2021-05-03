@@ -75,7 +75,7 @@ def run_train(args, config):
             patience=15,
             verbose=False,
             monitor="valid_loss",
-            min_delta=0.0,
+            min_delta=0.1,
         )
 
         callbacks = [checkpoint_callback, early_stop_callback, lr_monitor]
@@ -85,7 +85,7 @@ def run_train(args, config):
             version=f"0.{args.version}.{n_fold}",
         )
 
-        model = InddorModel(lr=1e-3)
+        model = InddorModel(lr=3e-3)
         trainer = Trainer(
             accelerator=config.accelerator,
             gpus=config.gpus,

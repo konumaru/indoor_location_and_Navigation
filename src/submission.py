@@ -154,6 +154,7 @@ class IndoorTestDataset(Dataset):
         x_build = (self.site_id[idx], self.floor[idx])
         x_wifi = (
             self.site_id[idx],
+            self.floor[idx],
             self.wifi_bssid[idx],
             self.wifi_rssi[idx],
             self.wifi_freq[idx],
@@ -198,7 +199,7 @@ def main():
     )
 
     # Load model and predict.
-    checkpoints = load_checkpoints("CV-GroupKfold5")
+    checkpoints = load_checkpoints("AddFeature-floor")
     floor = []
     postion = []
     for _, ckpt in enumerate(track(checkpoints)):
@@ -229,6 +230,7 @@ def main():
 
     # Dump submission file.
     submission = pd.read_csv("../data/raw/sample_submission.csv")
+
     # submission.iloc[:, 1] = floor
     submission.iloc[:, 2:] = postion
     print(submission.head())
