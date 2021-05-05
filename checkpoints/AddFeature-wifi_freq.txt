@@ -1,0 +1,5 @@
+../tb_logs/AddFeature-wifi_freq/0.2.0/checkpoints/epoch=49-trian_loss=0.0000-valid_loss=19.1952-valid_metric=18.4306.ckpt
+../tb_logs/AddFeature-wifi_freq/0.2.1/checkpoints/epoch=37-trian_loss=0.0000-valid_loss=24.1206-valid_metric=20.2286.ckpt
+../tb_logs/AddFeature-wifi_freq/0.2.2/checkpoints/epoch=44-trian_loss=0.0000-valid_loss=24.2225-valid_metric=21.3410.ckpt
+../tb_logs/AddFeature-wifi_freq/0.2.3/checkpoints/epoch=34-trian_loss=0.0000-valid_loss=24.1990-valid_metric=20.3816.ckpt
+../tb_logs/AddFeature-wifi_freq/0.2.4/checkpoints/epoch=49-trian_loss=0.0000-valid_loss=20.6076-valid_metric=19.4206.ckpt

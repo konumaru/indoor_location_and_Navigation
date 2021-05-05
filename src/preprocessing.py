@@ -104,23 +104,6 @@ def create_wifi(waypoint: np.ndarray, scr_dir: str = "../data/working"):
         last_seen_ts = []
 
         for i, (_, row) in enumerate(gdf.iterrows()):
-            # n_diff = 3
-            # ts_pre_wp = ts_waypoint[i - n_diff] if (i - n_diff) >= min_idx else None
-            # ts_post_wp = ts_waypoint[i + n_diff] if (i + n_diff) <= max_idx else None
-            # # NOTE: ターゲットとなるwaypointとその前後のwaypointの間にあるデータを取得する。
-            # ts_wifi = wifi["timestamp"].to_numpy()
-            # pre_flag = (
-            #     np.ones(len(ts_wifi)).astype(bool)
-            #     if ts_pre_wp is None
-            #     else (int(ts_pre_wp) < ts_wifi)
-            # )
-            # psot_flag = (
-            #     np.ones(len(ts_wifi)).astype(bool)
-            #     if ts_post_wp is None
-            #     else (ts_wifi < int(ts_post_wp))
-            # )
-            # _wifi = wifi[pre_flag & psot_flag].copy()
-
             ts_threshold = 3000
             ts_diff = np.abs(wifi["timestamp"].astype(int) - int(row["timestamp"]))
             _wifi = wifi[ts_diff <= ts_threshold].copy()
@@ -165,7 +148,7 @@ def create_wifi(waypoint: np.ndarray, scr_dir: str = "../data/working"):
     return results
 
 
-@save_cache("../data/preprocessing/train_wifi_results.pkl", False)
+@save_cache("../data/preprocessing/train_wifi_results.pkl", True)
 def get_wifi_results():
     waypoint = load_pickle("../data/preprocessing/train_waypoint.pkl", verbose=False)
     results = create_wifi(waypoint)
@@ -213,24 +196,6 @@ def create_beacon(waypoint: np.ndarray, scr_dir: str = "../data/working"):
         rssi = []
 
         for i, (_, row) in enumerate(gdf.iterrows()):
-            # n_diff = 1
-            # ts_pre_wp = ts_waypoint[i - n_diff] if (i - n_diff) >= min_idx else None
-            # ts_post_wp = ts_waypoint[i + n_diff] if (i + n_diff) <= max_idx else None
-
-            # # NOTE: ターゲットとなるwaypointとその前後のwaypointの間にあるデータを取得する。
-            # ts_data = data["timestamp"].to_numpy()
-            # pre_flag = (
-            #     np.ones(len(ts_data)).astype(bool)
-            #     if ts_pre_wp == None
-            #     else (int(ts_pre_wp) < ts_data)
-            # )
-            # psot_flag = (
-            #     np.ones(len(ts_data)).astype(bool)
-            #     if ts_post_wp == None
-            #     else (ts_data < int(ts_post_wp))
-            # )
-            # _data = data[pre_flag & psot_flag].copy()
-
             ts_threshold = 3000
             ts_diff = np.abs(data["timestamp"].astype(int) - int(row["timestamp"]))
             _data = data[ts_diff <= ts_threshold].copy()
@@ -267,7 +232,7 @@ def create_beacon(waypoint: np.ndarray, scr_dir: str = "../data/working"):
     return results
 
 
-@save_cache("../data/preprocessing/train_beacon_results.pkl", False)
+@save_cache("../data/preprocessing/train_beacon_results.pkl", True)
 def get_beacon_results():
     waypoint = load_pickle("../data/preprocessing/train_waypoint.pkl", verbose=False)
     results = create_beacon(waypoint)
@@ -294,32 +259,201 @@ def create_beacon_feature():
     save_scaler_and_npy(rssi, "beacon_rssi")
 
 
+# === common sensor data parser. ===
+
+
+def get_sensor_feature(
+    path_id: str,
+    gdf: pd.DataFrame,
+    data_name: str = "accelerometer",
+    fill_value: float = -99.0,
+):
+    past_X, past_Y, past_Z = [], [], []
+    feat_X, feat_Y, feat_Z = [], [], []
+
+    feature = load_pickle(f"../data/working/{path_id}.pkl", verbose=False)
+    data = feature[data_name]
+
+    seq_len = 100
+    data_size = gdf.shape[0]
+    past_x = np.tile(fill_value, (data_size, seq_len))
+    past_y = np.tile(fill_value, (data_size, seq_len))
+    past_z = np.tile(fill_value, (data_size, seq_len))
+
+    feat_x = np.tile(fill_value, (data_size, seq_len))
+    feat_y = np.tile(fill_value, (data_size, seq_len))
+    feat_z = np.tile(fill_value, (data_size, seq_len))
+
+    for i, (_, row) in enumerate(gdf.iterrows()):
+        ts_wp = row["timestamp"]
+        # Past features.
+        _data = data.loc[data["timestamp"] < ts_wp, ["x", "y", "z"]].tail(seq_len)
+        _data_size = _data.shape[0]
+
+        past_x[i, :_data_size] = _data["x"]
+        past_y[i, :_data_size] = _data["y"]
+        past_z[i, :_data_size] = _data["z"]
+        # Feature features.
+        _data = data.loc[data["timestamp"] > ts_wp, ["x", "y", "z"]].head(seq_len)
+        _data_size = _data.shape[0]
+
+        feat_x[i, :_data_size] = _data["x"]
+        feat_y[i, :_data_size] = _data["y"]
+        feat_z[i, :_data_size] = _data["z"]
+
+    past_X.append(np.fliplr(past_x))
+    past_Y.append(np.fliplr(past_y))
+    past_Z.append(np.fliplr(past_z))
+
+    feat_X.append(np.fliplr(feat_x))
+    feat_Y.append(np.fliplr(feat_y))
+    feat_Z.append(np.fliplr(feat_z))
+
+    return past_X, past_Y, past_Z, feat_X, feat_Y, feat_Z
+
+
+def save_scaler_and_npy(data: np.ndarray, name: str, seq_len: int = 100):
+    scaler = StandardScaler()
+    data = scaler.fit_transform(data.reshape(-1, 1))
+    data = data.astype("float32").reshape(-1, seq_len)
+    dump_pickle(f"../data/scaler/scaler_{name}.pkl", scaler)
+    np.save(f"../data/preprocessing/train_{name}.npy", data)
+
+
 # === accelerometer
 
 
+@save_cache("../data/preprocessing/train_acce_results.pkl", False)
+def get_acce_results():
+    waypoint = load_pickle("../data/preprocessing/train_waypoint.pkl", verbose=False)
+    results = Parallel(n_jobs=-1)(
+        delayed(get_sensor_feature)(path_id, gdf, "accelerometer", -10.0)
+        for path_id, gdf in track(waypoint.groupby("path"))
+    )
+    return results
+
+
 def create_accelerometer_feature():
-    return None
+    results = get_acce_results()
+    past_X, past_Y, past_Z, feat_X, feat_Y, feat_Z = zip(*results)
+
+    past_X = np.concatenate(past_X, axis=1).reshape(-1, 100)
+    past_Y = np.concatenate(past_Y, axis=1).reshape(-1, 100)
+    past_Z = np.concatenate(past_Z, axis=1).reshape(-1, 100)
+
+    feat_X = np.concatenate(feat_X, axis=1).reshape(-1, 100)
+    feat_Y = np.concatenate(feat_Y, axis=1).reshape(-1, 100)
+    feat_Z = np.concatenate(feat_Z, axis=1).reshape(-1, 100)
+
+    feature_name = "acce"
+    save_scaler_and_npy(past_X, f"{feature_name}_past_X", 100)
+    save_scaler_and_npy(past_Y, f"{feature_name}_past_Y", 100)
+    save_scaler_and_npy(past_Z, f"{feature_name}_past_Z", 100)
+    save_scaler_and_npy(feat_X, f"{feature_name}_feat_X", 100)
+    save_scaler_and_npy(feat_Y, f"{feature_name}_feat_Y", 100)
+    save_scaler_and_npy(feat_Z, f"{feature_name}_feat_Z", 100)
 
 
 # === gyroscope ===
 
 
+@save_cache("../data/preprocessing/train_gyroscope_results.pkl", False)
+def get_gyroscope_results():
+    waypoint = load_pickle("../data/preprocessing/train_waypoint.pkl", verbose=False)
+    results = Parallel(n_jobs=-1)(
+        delayed(get_sensor_feature)(path_id, gdf, "gyroscope", -5.0)
+        for path_id, gdf in track(waypoint.groupby("path"))
+    )
+    return results
+
+
 def create_gyroscope_feature():
-    return None
+    results = get_gyroscope_results()
+    past_X, past_Y, past_Z, feat_X, feat_Y, feat_Z = zip(*results)
+
+    past_X = np.concatenate(past_X, axis=1).reshape(-1, 100)
+    past_Y = np.concatenate(past_Y, axis=1).reshape(-1, 100)
+    past_Z = np.concatenate(past_Z, axis=1).reshape(-1, 100)
+
+    feat_X = np.concatenate(feat_X, axis=1).reshape(-1, 100)
+    feat_Y = np.concatenate(feat_Y, axis=1).reshape(-1, 100)
+    feat_Z = np.concatenate(feat_Z, axis=1).reshape(-1, 100)
+
+    feature_name = "gyroscope"
+    save_scaler_and_npy(past_X, f"{feature_name}_past_X", 100)
+    save_scaler_and_npy(past_Y, f"{feature_name}_past_Y", 100)
+    save_scaler_and_npy(past_Z, f"{feature_name}_past_Z", 100)
+    save_scaler_and_npy(feat_X, f"{feature_name}_feat_X", 100)
+    save_scaler_and_npy(feat_Y, f"{feature_name}_feat_Y", 100)
+    save_scaler_and_npy(feat_Z, f"{feature_name}_feat_Z", 100)
 
 
 # === magnetic_field ===
 
 
+@save_cache("../data/preprocessing/train_magnetic_field_results.pkl", False)
+def get_magnetic_field_results():
+    waypoint = load_pickle("../data/preprocessing/train_waypoint.pkl", verbose=False)
+    results = Parallel(n_jobs=-1)(
+        delayed(get_sensor_feature)(path_id, gdf, "magnetic_field", -99.0)
+        for path_id, gdf in track(waypoint.groupby("path"))
+    )
+    return results
+
+
 def create_magnetic_feild_feature():
-    return None
+    results = get_gyroscope_results()
+    past_X, past_Y, past_Z, feat_X, feat_Y, feat_Z = zip(*results)
+
+    past_X = np.concatenate(past_X, axis=1).reshape(-1, 100)
+    past_Y = np.concatenate(past_Y, axis=1).reshape(-1, 100)
+    past_Z = np.concatenate(past_Z, axis=1).reshape(-1, 100)
+
+    feat_X = np.concatenate(feat_X, axis=1).reshape(-1, 100)
+    feat_Y = np.concatenate(feat_Y, axis=1).reshape(-1, 100)
+    feat_Z = np.concatenate(feat_Z, axis=1).reshape(-1, 100)
+
+    feature_name = "magnetic_field"
+    save_scaler_and_npy(past_X, f"{feature_name}_past_X", 100)
+    save_scaler_and_npy(past_Y, f"{feature_name}_past_Y", 100)
+    save_scaler_and_npy(past_Z, f"{feature_name}_past_Z", 100)
+    save_scaler_and_npy(feat_X, f"{feature_name}_feat_X", 100)
+    save_scaler_and_npy(feat_Y, f"{feature_name}_feat_Y", 100)
+    save_scaler_and_npy(feat_Z, f"{feature_name}_feat_Z", 100)
 
 
 # === rotation_vector ===
 
 
+@save_cache("../data/preprocessing/train_rotation_vector_results.pkl", False)
+def get_rotation_vector_results():
+    waypoint = load_pickle("../data/preprocessing/train_waypoint.pkl", verbose=False)
+    results = Parallel(n_jobs=-1)(
+        delayed(get_sensor_feature)(path_id, gdf, "rotation_vector", -3.0)
+        for path_id, gdf in track(waypoint.groupby("path"))
+    )
+    return results
+
+
 def create_rotation_vector_feature():
-    return None
+    results = get_rotation_vector_results()
+    past_X, past_Y, past_Z, feat_X, feat_Y, feat_Z = zip(*results)
+
+    past_X = np.concatenate(past_X, axis=1).reshape(-1, 100)
+    past_Y = np.concatenate(past_Y, axis=1).reshape(-1, 100)
+    past_Z = np.concatenate(past_Z, axis=1).reshape(-1, 100)
+
+    feat_X = np.concatenate(feat_X, axis=1).reshape(-1, 100)
+    feat_Y = np.concatenate(feat_Y, axis=1).reshape(-1, 100)
+    feat_Z = np.concatenate(feat_Z, axis=1).reshape(-1, 100)
+
+    feature_name = "rotation_vector"
+    save_scaler_and_npy(past_X, f"{feature_name}_past_X", 100)
+    save_scaler_and_npy(past_Y, f"{feature_name}_past_Y", 100)
+    save_scaler_and_npy(past_Z, f"{feature_name}_past_Z", 100)
+    save_scaler_and_npy(feat_X, f"{feature_name}_feat_X", 100)
+    save_scaler_and_npy(feat_Y, f"{feature_name}_feat_Y", 100)
+    save_scaler_and_npy(feat_Z, f"{feature_name}_feat_Z", 100)
 
 
 def main():
@@ -334,6 +468,18 @@ def main():
 
     print("\nCreate beacon ...")
     _ = create_beacon_feature()
+
+    print("\nCreate accelerometer ...")
+    _ = create_accelerometer_feature()
+
+    print("\nCreate gyroscope ...")
+    _ = create_gyroscope_feature()
+
+    print("\nCreate magnetic_feild ...")
+    _ = create_magnetic_feild_feature()
+
+    print("\nCreate rotation_vector ...")
+    _ = create_rotation_vector_feature()
 
 
 if __name__ == "__main__":

@@ -20,7 +20,7 @@ class MeanAbsolutePositionLoss(nn.Module):
         pos_error = torch.abs(y_hat - y)
         pos_error = torch.sum(pos_error, dim=1)
 
-        p = 1  # 15
+        p = 5  # 15
         floor_error = p * self.ce_loss(floor_hat, floor)
 
         error = pos_error + floor_error
@@ -77,7 +77,7 @@ class WifiModel(nn.Module):
         self.site_embed = nn.Embedding(205, site_embed_dim)
         self.bssid_embed = nn.Embedding(238859 + 1, bssid_embed_dim)
         # LSTM layers.
-        n_dim_lstm = bssid_embed_dim + 1
+        n_dim_lstm = bssid_embed_dim + 2
         self.lstm_out_dim = 128
         self.lstm1 = nn.LSTM(n_dim_lstm, 256, num_layers=2, batch_first=True)
         self.lstm2 = nn.LSTM(256, self.lstm_out_dim, batch_first=True)
@@ -96,10 +96,10 @@ class WifiModel(nn.Module):
 
         wifi_bssid_vec = self.bssid_embed(wifi_bssid)
         wifi_rssi = wifi_rssi.view(-1, self.seq_len, 1)
-        # wifi_freq = wifi_freq.view(-1, self.seq_len, 1)
+        wifi_freq = wifi_freq.view(-1, self.seq_len, 1)
         # wifi_last_seen_ts = wifi_last_seen_ts.view(-1, self.seq_len, 1)
         # x = torch.cat((bssid_vec, wifi_rssi, wifi_freq, wifi_last_seen_ts), dim=2)
-        x = torch.cat((wifi_bssid_vec, wifi_rssi), dim=2)
+        x = torch.cat((wifi_bssid_vec, wifi_rssi, wifi_freq), dim=2)
 
         x, _ = self.lstm1(x)
         x, _ = self.lstm2(x)
