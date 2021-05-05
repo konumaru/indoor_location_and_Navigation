@@ -117,7 +117,7 @@ class BeaconModel(nn.Module):
     def __init__(
         self,
         seq_len: int = 20,
-        uuid_embed_dim: int = 64,
+        uuid_embed_dim: int = 32,
         output_dim: int = 128,
     ):
         super(BeaconModel, self).__init__()
@@ -164,12 +164,9 @@ class InddorModel(LightningModule):
         # Each data models.
         # self.model_build = BuildModel()
         self.model_wifi = WifiModel(seq_len=wifi_seq_len)
-        # self.model_beacon = BeaconModel()
+        self.model_beacon = BeaconModel()
 
-        input_dim = (
-            self.model_wifi.output_dim
-            # + self.model_beacon.output_dim
-        )
+        input_dim = self.model_wifi.output_dim  # + self.model_beacon.output_dim
 
         self.layers = nn.Sequential(
             nn.BatchNorm1d(input_dim),
@@ -190,13 +187,13 @@ class InddorModel(LightningModule):
 
         # x_build = self.model_build(x_build)
         x_wifi = self.model_wifi(x_wifi)
-        # x_beacon = self.model_beacon(x_beacon)
+        x_beacon = self.model_beacon(x_beacon)
 
         x = torch.cat(
             (
                 # x_build,
                 x_wifi,
-                # x_beacon,
+                x_beacon,
             ),
             dim=1,
         )

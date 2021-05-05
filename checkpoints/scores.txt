@@ -21,3 +21,6 @@
     AddFeature-wifi_freq    0 37.0850
     AddFeature-wifi_freq    1 19.2875
     AddFeature-wifi_freq    2 19.9605
+       AddFeature-Beacon    0 nan
+       AddFeature-Beacon    0 20.0631
+       AddFeature-Beacon    1 21.1233

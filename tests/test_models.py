@@ -82,7 +82,7 @@ def get_beacon_feature(batch_size: int = 100, seq_len: int = 20):
 
 
 def test_beacon_model():
-    batch_size = 100
+    batch_size = 32
     input_beacon = get_beacon_feature(batch_size)
     model = models.BeaconModel()
     z = model(input_beacon)
