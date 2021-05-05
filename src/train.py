@@ -72,7 +72,7 @@ def run_train(args, config):
         lr_monitor = LearningRateMonitor(logging_interval="step")
         early_stop_callback = EarlyStopping(
             mode="min",
-            patience=15,
+            patience=20,
             verbose=False,
             monitor="valid_loss",
             min_delta=0.1,
@@ -85,7 +85,7 @@ def run_train(args, config):
             version=f"0.{args.version}.{n_fold}",
         )
 
-        model = InddorModel(lr=3e-3)
+        model = InddorModel(lr=1e-3)
         trainer = Trainer(
             accelerator=config.accelerator,
             gpus=config.gpus,

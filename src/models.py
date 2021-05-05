@@ -107,6 +107,7 @@ class WifiModel(nn.Module):
 
         site_vec = self.site_embed(site)
         floor = floor.view(-1, 1)
+
         x = torch.cat((x, site_vec, floor), dim=1)
         x = self.layers(x)
         return x
@@ -127,8 +128,8 @@ class BeaconModel(nn.Module):
         # LSTM layers.
         n_dim_lstm = uuid_embed_dim + 2
         self.lstm_out_dim = 16
-        self.lstm1 = nn.LSTM(n_dim_lstm, 256, num_layers=2, batch_first=True)
-        self.lstm2 = nn.LSTM(256, self.lstm_out_dim, batch_first=True)
+        self.lstm1 = nn.LSTM(n_dim_lstm, 128, num_layers=2, batch_first=True)
+        self.lstm2 = nn.LSTM(128, self.lstm_out_dim, batch_first=True)
 
         self.layers = nn.Sequential(
             nn.BatchNorm1d(seq_len * self.lstm_out_dim),
@@ -173,18 +174,14 @@ class InddorModel(LightningModule):
         self.layers = nn.Sequential(
             nn.BatchNorm1d(input_dim),
             nn.Linear(input_dim, 256),
-            nn.ReLU(),
+            nn.PReLU(),
             nn.Linear(256, 64),
-            nn.ReLU(),
+            nn.PReLU(),
         )
         self.layer_floor = nn.Sequential(
-            nn.Linear(64, 64),
-            nn.ReLU(),
             nn.Linear(64, 14),
         )
         self.layer_position = nn.Sequential(
-            nn.Linear(64, 64),
-            nn.ReLU(),
             nn.Linear(64, 2),
         )
 

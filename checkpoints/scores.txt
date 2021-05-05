@@ -9,3 +9,12 @@
           CV-GroupKfold5    5 43.8045
         AddFeature-floor    0 24.5123
         AddFeature-floor    1 24.2258
+
+       AddFeature-onehot    0 nan
+       AddFeature-onehot    0 30.2395
+             Change-ReLU    0 27.4116
+            Change-PReLU    0 32.6679
+             Change-SELU    0 34.5701
+
+                Baseline    1 33.7474
+                Baseline    2 18.8223

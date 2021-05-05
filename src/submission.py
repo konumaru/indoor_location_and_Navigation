@@ -199,7 +199,7 @@ def main():
     )
 
     # Load model and predict.
-    checkpoints = load_checkpoints("AddFeature-floor")
+    checkpoints = load_checkpoints("Baseline")
     floor = []
     postion = []
     for _, ckpt in enumerate(track(checkpoints)):

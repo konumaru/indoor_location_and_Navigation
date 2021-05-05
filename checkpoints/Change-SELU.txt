@@ -1,0 +1,5 @@
+../tb_logs/Change-SELU/0.0.0/checkpoints/epoch=49-trian_loss=0.0000-valid_loss=17.7859-valid_metric=18.6557.ckpt
+../tb_logs/Change-SELU/0.0.1/checkpoints/epoch=43-trian_loss=0.0000-valid_loss=21.0121-valid_metric=43.8114.ckpt
+../tb_logs/Change-SELU/0.0.2/checkpoints/epoch=18-trian_loss=0.0000-valid_loss=21.7793-valid_metric=43.7271.ckpt
+../tb_logs/Change-SELU/0.0.3/checkpoints/epoch=40-trian_loss=0.0000-valid_loss=20.9214-valid_metric=43.6138.ckpt
+../tb_logs/Change-SELU/0.0.4/checkpoints/epoch=47-trian_loss=0.0000-valid_loss=19.4467-valid_metric=23.0425.ckpt

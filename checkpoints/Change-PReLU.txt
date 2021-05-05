@@ -1,0 +1,5 @@
+../tb_logs/Change-PReLU/0.0.0/checkpoints/epoch=12-trian_loss=0.0000-valid_loss=50.1737-valid_metric=72.9074.ckpt
+../tb_logs/Change-PReLU/0.0.1/checkpoints/epoch=34-trian_loss=0.0000-valid_loss=18.9659-valid_metric=19.6482.ckpt
+../tb_logs/Change-PReLU/0.0.2/checkpoints/epoch=46-trian_loss=0.0000-valid_loss=19.4692-valid_metric=19.4901.ckpt
+../tb_logs/Change-PReLU/0.0.3/checkpoints/epoch=40-trian_loss=0.0000-valid_loss=18.8617-valid_metric=18.8359.ckpt
+../tb_logs/Change-PReLU/0.0.4/checkpoints/epoch=48-trian_loss=0.0000-valid_loss=20.0808-valid_metric=32.4578.ckpt

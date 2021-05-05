@@ -1,0 +1,5 @@
+../tb_logs/AddFeature-onehot/0.0.0/checkpoints/epoch=14-trian_loss=0.0000-valid_loss=20.0828-valid_metric=43.8636.ckpt
+../tb_logs/AddFeature-onehot/0.0.1/checkpoints/epoch=35-trian_loss=0.0000-valid_loss=18.1099-valid_metric=18.9506.ckpt
+../tb_logs/AddFeature-onehot/0.0.2/checkpoints/epoch=49-trian_loss=0.0000-valid_loss=20.3165-valid_metric=20.7759.ckpt
+../tb_logs/AddFeature-onehot/0.0.3/checkpoints/epoch=10-trian_loss=0.0000-valid_loss=22.6641-valid_metric=46.8566.ckpt
+../tb_logs/AddFeature-onehot/0.0.4/checkpoints/epoch=23-trian_loss=0.0000-valid_loss=19.1035-valid_metric=20.7510.ckpt
