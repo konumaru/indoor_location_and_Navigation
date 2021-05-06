@@ -1,0 +1,5 @@
+../tb_logs/AddFeature_Sensor/0.0.0/checkpoints/epoch=19-trian_loss=0.0000-valid_loss=18.7704-valid_metric=18.6252.ckpt
+../tb_logs/AddFeature_Sensor/0.0.1/checkpoints/epoch=19-trian_loss=0.0000-valid_loss=18.8475-valid_metric=18.8186.ckpt
+../tb_logs/AddFeature_Sensor/0.0.2/checkpoints/epoch=19-trian_loss=0.0000-valid_loss=20.7442-valid_metric=20.6772.ckpt
+../tb_logs/AddFeature_Sensor/0.0.3/checkpoints/epoch=17-trian_loss=0.0000-valid_loss=19.6845-valid_metric=19.5611.ckpt
+../tb_logs/AddFeature_Sensor/0.0.4/checkpoints/epoch=18-trian_loss=0.0000-valid_loss=18.9204-valid_metric=18.8772.ckpt

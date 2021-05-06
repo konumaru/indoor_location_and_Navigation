@@ -285,7 +285,7 @@ def get_sensor_feature(
     feat_z = np.tile(fill_value, (data_size, seq_len))
 
     for i, (_, row) in enumerate(gdf.iterrows()):
-        ts_wp = row["timestamp"]
+        ts_wp = int(row["timestamp"])
         # Past features.
         _data = data.loc[data["timestamp"] < ts_wp, ["x", "y", "z"]].tail(seq_len)
         _data_size = _data.shape[0]

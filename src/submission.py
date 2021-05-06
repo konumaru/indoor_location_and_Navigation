@@ -9,7 +9,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 
 from models import InddorModel
-from preprocessing import create_wifi, create_beacon
+from preprocessing import create_wifi, create_beacon, get_sensor_feature
 
 from utils.feature import FeatureStore
 from utils.common import timer
@@ -33,7 +33,7 @@ def extract_raw_data():
             floor=floor,
             path_id=path_id,
             input_path="../data/raw/",
-            save_path="../data/submit/path_data/",
+            save_path="../data/working/",
             is_test=True,
         )
         feature.load_all_data()
@@ -115,6 +115,78 @@ def create_beacon_feature():
     transform_by_scaler_and_save_npy(rssi, "beacon_rssi", 20)
 
 
+@save_cache("../data/submit/test_acce_results.pkl", True)
+def get_acce_results():
+    waypoint = load_pickle("../data/submit/test_waypoint.pkl", verbose=False)
+    results = Parallel(n_jobs=-1)(
+        delayed(get_sensor_feature)(path_id, gdf, "accelerometer", -10.0)
+        for path_id, gdf in track(waypoint.groupby("path"))
+    )
+    return results
+
+
+@save_cache("../data/submit/test_gyroscope_results.pkl", True)
+def get_gyroscope_results():
+    waypoint = load_pickle("../data/submit/test_waypoint.pkl", verbose=False)
+    results = Parallel(n_jobs=-1)(
+        delayed(get_sensor_feature)(path_id, gdf, "gyroscope", -5.0)
+        for path_id, gdf in track(waypoint.groupby("path"))
+    )
+    return results
+
+
+@save_cache("../data/submit/test_magnetic_field_results.pkl", True)
+def get_magnetic_field_results():
+    waypoint = load_pickle("../data/submit/test_waypoint.pkl", verbose=False)
+    results = Parallel(n_jobs=-1)(
+        delayed(get_sensor_feature)(path_id, gdf, "magnetic_field", -99.0)
+        for path_id, gdf in track(waypoint.groupby("path"))
+    )
+    return results
+
+
+@save_cache("../data/submit/test_rotation_vector_results.pkl", True)
+def get_rotation_vector_results():
+    waypoint = load_pickle("../data/submit/test_waypoint.pkl", verbose=False)
+    results = Parallel(n_jobs=-1)(
+        delayed(get_sensor_feature)(path_id, gdf, "rotation_vector", -3.0)
+        for path_id, gdf in track(waypoint.groupby("path"))
+    )
+    return results
+
+
+def create_sensor_feature():
+    def dump_data(results, feature_name: str):
+        past_X, past_Y, past_Z, feat_X, feat_Y, feat_Z = zip(*results)
+
+        past_X = np.concatenate(past_X, axis=1).reshape(-1, 100)
+        past_Y = np.concatenate(past_Y, axis=1).reshape(-1, 100)
+        past_Z = np.concatenate(past_Z, axis=1).reshape(-1, 100)
+
+        feat_X = np.concatenate(feat_X, axis=1).reshape(-1, 100)
+        feat_Y = np.concatenate(feat_Y, axis=1).reshape(-1, 100)
+        feat_Z = np.concatenate(feat_Z, axis=1).reshape(-1, 100)
+
+        transform_by_scaler_and_save_npy(past_X, f"{feature_name}_past_X", 100)
+        transform_by_scaler_and_save_npy(past_Y, f"{feature_name}_past_Y", 100)
+        transform_by_scaler_and_save_npy(past_Z, f"{feature_name}_past_Z", 100)
+        transform_by_scaler_and_save_npy(feat_X, f"{feature_name}_feat_X", 100)
+        transform_by_scaler_and_save_npy(feat_Y, f"{feature_name}_feat_Y", 100)
+        transform_by_scaler_and_save_npy(feat_Z, f"{feature_name}_feat_Z", 100)
+
+    results = get_acce_results()
+    dump_data(results, "acce")
+
+    results = get_gyroscope_results()
+    dump_data(results, "gyroscope")
+
+    results = get_magnetic_field_results()
+    dump_data(results, "magnetic_field")
+
+    results = get_rotation_vector_results()
+    dump_data(results, "rotation_vector")
+
+
 class IndoorTestDataset(Dataset):
     def __init__(self):
         # Load features.
@@ -147,6 +219,42 @@ class IndoorTestDataset(Dataset):
         self.beacon_tx_power = beacon_tx_power
         self.beacon_rssi = beacon_rssi
 
+        # Acce features.
+        feature_name = "acce"
+        self.acce_past_x = np.load(featfure_dir / f"test_{feature_name}_past_X.npy")
+        self.acce_past_y = np.load(featfure_dir / f"test_{feature_name}_past_Y.npy")
+        self.acce_past_z = np.load(featfure_dir / f"test_{feature_name}_past_Z.npy")
+        self.acce_feat_x = np.load(featfure_dir / f"test_{feature_name}_feat_X.npy")
+        self.acce_feat_y = np.load(featfure_dir / f"test_{feature_name}_feat_Y.npy")
+        self.acce_feat_z = np.load(featfure_dir / f"test_{feature_name}_feat_Z.npy")
+
+        # Gyroscope features.
+        feature_name = "gyroscope"
+        self.gyro_past_x = np.load(featfure_dir / f"test_{feature_name}_past_X.npy")
+        self.gyro_past_y = np.load(featfure_dir / f"test_{feature_name}_past_Y.npy")
+        self.gyro_past_z = np.load(featfure_dir / f"test_{feature_name}_past_Z.npy")
+        self.gyro_feat_x = np.load(featfure_dir / f"test_{feature_name}_feat_X.npy")
+        self.gyro_feat_y = np.load(featfure_dir / f"test_{feature_name}_feat_Y.npy")
+        self.gyro_feat_z = np.load(featfure_dir / f"test_{feature_name}_feat_Z.npy")
+
+        # Magnetic_field features.
+        feature_name = "magnetic_field"
+        self.magnetic_past_x = np.load(featfure_dir / f"test_{feature_name}_past_X.npy")
+        self.magnetic_past_y = np.load(featfure_dir / f"test_{feature_name}_past_Y.npy")
+        self.magnetic_past_z = np.load(featfure_dir / f"test_{feature_name}_past_Z.npy")
+        self.magnetic_feat_x = np.load(featfure_dir / f"test_{feature_name}_feat_X.npy")
+        self.magnetic_feat_y = np.load(featfure_dir / f"test_{feature_name}_feat_Y.npy")
+        self.magnetic_feat_z = np.load(featfure_dir / f"test_{feature_name}_feat_Z.npy")
+
+        # Rotation_vector features.
+        feature_name = "rotation_vector"
+        self.rotation_past_x = np.load(featfure_dir / f"test_{feature_name}_past_X.npy")
+        self.rotation_past_y = np.load(featfure_dir / f"test_{feature_name}_past_Y.npy")
+        self.rotation_past_z = np.load(featfure_dir / f"test_{feature_name}_past_Z.npy")
+        self.rotation_feat_x = np.load(featfure_dir / f"test_{feature_name}_feat_X.npy")
+        self.rotation_feat_y = np.load(featfure_dir / f"test_{feature_name}_feat_Y.npy")
+        self.rotation_feat_z = np.load(featfure_dir / f"test_{feature_name}_feat_Z.npy")
+
     def __len__(self):
         return len(self.site_id)
 
@@ -165,7 +273,48 @@ class IndoorTestDataset(Dataset):
             self.beacon_tx_power[idx],
             self.beacon_rssi[idx],
         )
-        x = (x_build, x_wifi, x_beacon)
+        x_acce = (
+            self.acce_past_x[idx],
+            self.acce_past_y[idx],
+            self.acce_past_z[idx],
+            self.acce_feat_x[idx],
+            self.acce_feat_y[idx],
+            self.acce_feat_z[idx],
+        )
+        x_gyroscope = (
+            self.gyro_past_x[idx],
+            self.gyro_past_y[idx],
+            self.gyro_past_z[idx],
+            self.gyro_feat_x[idx],
+            self.gyro_feat_y[idx],
+            self.gyro_feat_z[idx],
+        )
+        x_magnetic_feild = (
+            self.magnetic_past_x[idx],
+            self.magnetic_past_y[idx],
+            self.magnetic_past_z[idx],
+            self.magnetic_feat_x[idx],
+            self.magnetic_feat_y[idx],
+            self.magnetic_feat_z[idx],
+        )
+        x_rotation_vector = (
+            self.rotation_past_x[idx],
+            self.rotation_past_y[idx],
+            self.rotation_past_z[idx],
+            self.rotation_feat_x[idx],
+            self.rotation_feat_y[idx],
+            self.rotation_feat_z[idx],
+        )
+
+        x = (
+            x_build,
+            x_wifi,
+            x_beacon,
+            x_acce,
+            x_gyroscope,
+            x_magnetic_feild,
+            x_rotation_vector,
+        )
         return x
 
 
@@ -186,6 +335,7 @@ def main():
     _ = create_test_build()
     _ = create_wifi_feature()
     _ = create_beacon_feature()
+    _ = create_sensor_feature()
 
     # Define dataset and dataloader.
     dataset = IndoorTestDataset()
@@ -200,6 +350,7 @@ def main():
 
     # Load model and predict.
     checkpoints = load_checkpoints("AddFeature_Sensor")
+
     floor = []
     postion = []
     for _, ckpt in enumerate(track(checkpoints)):
@@ -212,20 +363,20 @@ def main():
         for batch in dataloader:
             floor_hat, pos_hat = model(batch)
 
-            # _floor.append(y_hat[0])
+            _floor.append(floor_hat)
             _postion.append(pos_hat)
 
-        # _floor = torch.cat(_floor, dim=0).detach().numpy().copy()
+        _floor = torch.cat(_floor, dim=0).detach().numpy().copy()
         _postion = torch.cat(_postion, dim=0).detach().cpu().numpy()
 
-        # floor.append(_floor)
+        floor.append(_floor)
         postion.append(_postion)
 
-    # floor = (
-    #     pd.DataFrame(np.concatenate(floor, axis=1))
-    #     .apply(lambda x: statistics.mode(x), axis=1)
-    #     .to_numpy()
-    # )
+    floor = (
+        pd.DataFrame(np.concatenate(floor, axis=1))
+        .apply(lambda x: statistics.mode(x), axis=1)
+        .to_numpy()
+    )
     postion = np.mean(postion, axis=0)
 
     # Dump submission file.
@@ -239,7 +390,7 @@ def main():
     submission["floor"] = submission["floor"].astype(int)
     submission.to_csv("../data/submit/submission.csv", index=False)
 
-    assert submission.isnull().mean().max() == 0.0
+    assert submission.isnull().any().any() == 0.0
 
 
 if __name__ == "__main__":

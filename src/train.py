@@ -43,8 +43,8 @@ def dump_cv_metric(model_name: str, version: int, metric: float):
         f.write(txt)
 
 
-def dump_best_checkpoints(best_checkpoints: List, model_name: AnyStr):
-    with open(f"../checkpoints/{model_name}.txt", "w") as f:
+def dump_best_checkpoints(best_checkpoints: List, model_name: AnyStr, version: int):
+    with open(f"../checkpoints/{model_name}_{version}.txt", "w") as f:
         txt = "\n".join(best_checkpoints)
         f.write(txt)
 
@@ -110,7 +110,7 @@ def run_train(args, config):
             metrics.append(metric)
 
     dump_cv_metric(args.model_name, args.version, np.mean(metrics))
-    dump_best_checkpoints(best_checkpoints, args.model_name)
+    dump_best_checkpoints(best_checkpoints, args.model_name, args.version)
 
 
 def main():
