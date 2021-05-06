@@ -90,16 +90,39 @@ def test_beacon_model():
     assert z.size(0) == batch_size
 
 
+def get_acce_feature(batch_size: int = 100, seq_len: int = 20):
+    past_x = torch.rand(size=(batch_size, seq_len))
+    past_y = torch.rand(size=(batch_size, seq_len))
+    past_z = torch.rand(size=(batch_size, seq_len))
+
+    feat_x = torch.rand(size=(batch_size, seq_len))
+    feat_y = torch.rand(size=(batch_size, seq_len))
+    feat_z = torch.rand(size=(batch_size, seq_len))
+    return (past_x, past_y, past_z, feat_x, feat_y, feat_z)
+
+
+def test_acce_model():
+    batch_size = 32
+    input_acce = get_acce_feature(batch_size, seq_len=100)
+    model = models.AccelemoterModel()
+    z = model(input_acce)
+
+    print(z.shape)
+
+    assert z.size(0) == batch_size
+
+
 def test_indoor_model():
     batch_size = 32
     input_build = get_build_feature(batch_size)
     input_wifi = get_wifi_feature(batch_size, seq_len=20)
     input_beacon = get_beacon_feature(batch_size)
+    input_acce = get_acce_feature(batch_size, seq_len=100)
 
     floor = torch.randint(14, size=(batch_size,))
     waypoint = torch.rand(size=(batch_size, 2))
 
-    x = (input_build, input_wifi, input_beacon)
+    x = (input_build, input_wifi, input_beacon, input_acce)
     y = (floor, waypoint)
 
     model = models.InddorModel(wifi_seq_len=20)

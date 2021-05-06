@@ -154,6 +154,53 @@ class BeaconModel(nn.Module):
         return x
 
 
+class SendorModel(nn.Module):
+    def __init__(self, seq_len: int = 100, output_dim: int = 128):
+        super(SendorModel, self).__init__()
+        self.seq_len = seq_len
+        self.output_dim = output_dim
+
+        self.post_lstm1 = nn.LSTM(3, 64, num_layers=2, batch_first=True)
+        self.post_lstm2 = nn.LSTM(64, 16, batch_first=True)
+
+        self.feat_lstm1 = nn.LSTM(3, 64, num_layers=2, batch_first=True)
+        self.feat_lstm2 = nn.LSTM(64, 16, batch_first=True)
+
+        layer_input_dim = seq_len * 16 * 2
+        self.layers = nn.Sequential(
+            nn.BatchNorm1d(layer_input_dim),
+            nn.Linear(layer_input_dim, 512),
+            nn.PReLU(),
+            nn.Linear(512, output_dim),
+            nn.PReLU(),
+        )
+
+    def forward(self, x):
+        (past_x, past_y, past_z, feat_x, feat_y, feat_z) = x
+
+        past_x = past_x.view(-1, self.seq_len, 1)
+        past_y = past_y.view(-1, self.seq_len, 1)
+        past_z = past_z.view(-1, self.seq_len, 1)
+
+        feat_x = feat_x.view(-1, self.seq_len, 1)
+        feat_y = feat_y.view(-1, self.seq_len, 1)
+        feat_z = feat_z.view(-1, self.seq_len, 1)
+
+        past_feat = torch.cat((past_x, past_y, past_z), dim=2)
+        past_feat, _ = self.post_lstm1(past_feat)
+        past_feat, _ = self.post_lstm2(past_feat)
+        past_feat = past_feat.reshape(-1, self.seq_len * 16)
+
+        feat_feat = torch.cat((feat_x, feat_y, feat_z), dim=2)
+        feat_feat, _ = self.feat_lstm1(feat_feat)
+        feat_feat, _ = self.feat_lstm2(feat_feat)
+        feat_feat = feat_feat.reshape(-1, self.seq_len * 16)
+
+        x = torch.cat((past_feat, feat_feat), dim=1)
+        x = self.layers(x)
+        return x
+
+
 class InddorModel(LightningModule):
     def __init__(self, lr: float = 1e-3, wifi_seq_len: int = 100):
         super(InddorModel, self).__init__()
@@ -165,8 +212,19 @@ class InddorModel(LightningModule):
         # self.model_build = BuildModel()
         self.model_wifi = WifiModel(seq_len=wifi_seq_len)
         self.model_beacon = BeaconModel()
+        self.model_acce = SendorModel(seq_len=100)
+        self.model_gyroscope = SendorModel(seq_len=100)
+        self.model_magnetic_feild = SendorModel(seq_len=100)
+        self.model_rotation_vector = SendorModel(seq_len=100)
 
-        input_dim = self.model_wifi.output_dim  # + self.model_beacon.output_dim
+        input_dim = (
+            self.model_wifi.output_dim
+            + self.model_beacon.output_dim
+            + self.model_acce.output_dim
+            + self.model_gyroscope.output_dim
+            + self.model_magnetic_feild.output_dim
+            + self.model_rotation_vector.output_dim
+        )
 
         self.layers = nn.Sequential(
             nn.BatchNorm1d(input_dim),
@@ -183,17 +241,33 @@ class InddorModel(LightningModule):
         )
 
     def forward(self, x):
-        x_build, x_wifi, x_beacon = x
+        (
+            x_build,
+            x_wifi,
+            x_beacon,
+            x_acce,
+            x_gyroscope,
+            x_magnetic_feild,
+            x_rotation_vector,
+        ) = x
 
         # x_build = self.model_build(x_build)
         x_wifi = self.model_wifi(x_wifi)
         x_beacon = self.model_beacon(x_beacon)
+        x_acce = self.model_acce(x_acce)
+        x_gyroscope = self.model_acce(x_gyroscope)
+        x_magnetic_feild = self.model_acce(x_magnetic_feild)
+        x_rotation_vector = self.model_acce(x_rotation_vector)
 
         x = torch.cat(
             (
                 # x_build,
                 x_wifi,
                 x_beacon,
+                x_acce,
+                x_gyroscope,
+                x_magnetic_feild,
+                x_rotation_vector,
             ),
             dim=1,
         )

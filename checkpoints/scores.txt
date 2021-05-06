@@ -24,3 +24,8 @@
        AddFeature-Beacon    0 nan
        AddFeature-Beacon    0 20.0631
        AddFeature-Beacon    1 21.1233
+         AddFeature_Acce    0 nan
+         AddFeature_Acce    0 19.9652
+         AddFeature_Acce    1 20.1576
+         AddFeature_Acce    1 nan
+       AddFeature_Sensor    0 nan

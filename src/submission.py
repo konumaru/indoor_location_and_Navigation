@@ -199,7 +199,7 @@ def main():
     )
 
     # Load model and predict.
-    checkpoints = load_checkpoints("AddFeature-wifi_freq")
+    checkpoints = load_checkpoints("AddFeature_Sensor")
     floor = []
     postion = []
     for _, ckpt in enumerate(track(checkpoints)):

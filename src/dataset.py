@@ -45,6 +45,74 @@ class IndoorDataset(Dataset):
         self.beacon_tx_power = beacon_tx_power[data_index]
         self.beacon_rssi = beacon_rssi[data_index]
 
+        # Acce features.
+        feature_name = "acce"
+        acce_past_x = np.load(featfure_dir / f"train_{feature_name}_past_X.npy")
+        acce_past_y = np.load(featfure_dir / f"train_{feature_name}_past_Y.npy")
+        acce_past_z = np.load(featfure_dir / f"train_{feature_name}_past_Z.npy")
+
+        acce_feat_x = np.load(featfure_dir / f"train_{feature_name}_feat_X.npy")
+        acce_feat_y = np.load(featfure_dir / f"train_{feature_name}_feat_Y.npy")
+        acce_feat_z = np.load(featfure_dir / f"train_{feature_name}_feat_Z.npy")
+
+        self.acce_past_x = acce_past_x[data_index]
+        self.acce_past_y = acce_past_y[data_index]
+        self.acce_past_z = acce_past_z[data_index]
+        self.acce_feat_x = acce_feat_x[data_index]
+        self.acce_feat_y = acce_feat_y[data_index]
+        self.acce_feat_z = acce_feat_z[data_index]
+
+        # Gyroscope features.
+        feature_name = "gyroscope"
+        gyro_past_x = np.load(featfure_dir / f"train_{feature_name}_past_X.npy")
+        gyro_past_y = np.load(featfure_dir / f"train_{feature_name}_past_Y.npy")
+        gyro_past_z = np.load(featfure_dir / f"train_{feature_name}_past_Z.npy")
+
+        gyro_feat_x = np.load(featfure_dir / f"train_{feature_name}_feat_X.npy")
+        gyro_feat_y = np.load(featfure_dir / f"train_{feature_name}_feat_Y.npy")
+        gyro_feat_z = np.load(featfure_dir / f"train_{feature_name}_feat_Z.npy")
+
+        self.gyro_past_x = gyro_past_x[data_index]
+        self.gyro_past_y = gyro_past_y[data_index]
+        self.gyro_past_z = gyro_past_z[data_index]
+        self.gyro_feat_x = gyro_feat_x[data_index]
+        self.gyro_feat_y = gyro_feat_y[data_index]
+        self.gyro_feat_z = gyro_feat_z[data_index]
+
+        # Magnetic_field features.
+        feature_name = "magnetic_field"
+        magnetic_past_x = np.load(featfure_dir / f"train_{feature_name}_past_X.npy")
+        magnetic_past_y = np.load(featfure_dir / f"train_{feature_name}_past_Y.npy")
+        magnetic_past_z = np.load(featfure_dir / f"train_{feature_name}_past_Z.npy")
+
+        magnetic_feat_x = np.load(featfure_dir / f"train_{feature_name}_feat_X.npy")
+        magnetic_feat_y = np.load(featfure_dir / f"train_{feature_name}_feat_Y.npy")
+        magnetic_feat_z = np.load(featfure_dir / f"train_{feature_name}_feat_Z.npy")
+
+        self.magnetic_past_x = magnetic_past_x[data_index]
+        self.magnetic_past_y = magnetic_past_y[data_index]
+        self.magnetic_past_z = magnetic_past_z[data_index]
+        self.magnetic_feat_x = magnetic_feat_x[data_index]
+        self.magnetic_feat_y = magnetic_feat_y[data_index]
+        self.magnetic_feat_z = magnetic_feat_z[data_index]
+
+        # Rotation_vector features.
+        feature_name = "rotation_vector"
+        rotation_past_x = np.load(featfure_dir / f"train_{feature_name}_past_X.npy")
+        rotation_past_y = np.load(featfure_dir / f"train_{feature_name}_past_Y.npy")
+        rotation_past_z = np.load(featfure_dir / f"train_{feature_name}_past_Z.npy")
+
+        rotation_feat_x = np.load(featfure_dir / f"train_{feature_name}_feat_X.npy")
+        rotation_feat_y = np.load(featfure_dir / f"train_{feature_name}_feat_Y.npy")
+        rotation_feat_z = np.load(featfure_dir / f"train_{feature_name}_feat_Z.npy")
+
+        self.rotation_past_x = rotation_past_x[data_index]
+        self.rotation_past_y = rotation_past_y[data_index]
+        self.rotation_past_z = rotation_past_z[data_index]
+        self.rotation_feat_x = rotation_feat_x[data_index]
+        self.rotation_feat_y = rotation_feat_y[data_index]
+        self.rotation_feat_z = rotation_feat_z[data_index]
+
     def __len__(self):
         return len(self.site_id)
 
@@ -63,8 +131,48 @@ class IndoorDataset(Dataset):
             self.beacon_tx_power[idx],
             self.beacon_rssi[idx],
         )
+        x_acce = (
+            self.acce_past_x[idx],
+            self.acce_past_y[idx],
+            self.acce_past_z[idx],
+            self.acce_feat_x[idx],
+            self.acce_feat_y[idx],
+            self.acce_feat_z[idx],
+        )
+        x_gyroscope = (
+            self.gyro_past_x[idx],
+            self.gyro_past_y[idx],
+            self.gyro_past_z[idx],
+            self.gyro_feat_x[idx],
+            self.gyro_feat_y[idx],
+            self.gyro_feat_z[idx],
+        )
+        x_magnetic_feild = (
+            self.magnetic_past_x[idx],
+            self.magnetic_past_y[idx],
+            self.magnetic_past_z[idx],
+            self.magnetic_feat_x[idx],
+            self.magnetic_feat_y[idx],
+            self.magnetic_feat_z[idx],
+        )
+        x_rotation_vector = (
+            self.rotation_past_x[idx],
+            self.rotation_past_y[idx],
+            self.rotation_past_z[idx],
+            self.rotation_feat_x[idx],
+            self.rotation_feat_y[idx],
+            self.rotation_feat_z[idx],
+        )
 
-        x = (x_build, x_wifi, x_beacon)
+        x = (
+            x_build,
+            x_wifi,
+            x_beacon,
+            x_acce,
+            x_gyroscope,
+            x_magnetic_feild,
+            x_rotation_vector,
+        )
         y = (self.floor[idx], self.position[idx])
         return x, y
 
